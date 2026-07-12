@@ -1,0 +1,1244 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>齿轮箱 HMI 人机交互</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: #e5edf8;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background:
+                radial-gradient(circle at 18% 10%, rgba(14, 165, 233, 0.16), transparent 32%),
+                linear-gradient(135deg, #07111f 0%, #101936 52%, #07111f 100%);
+        }
+        button, input, select { font: inherit; }
+        .login-shell {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+        .hmi-login-card {
+            width: min(420px, 100%);
+            padding: 28px;
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.88);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+        }
+        .hmi-login-card h1 {
+            margin: 0 0 6px;
+            color: #e0f2fe;
+            font-size: 1.35rem;
+        }
+        .hmi-login-card p {
+            margin: 0 0 22px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .hmi-login-card label {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 14px;
+            color: #bfdbfe;
+            font-size: 0.86rem;
+        }
+        .hmi-login-card input,
+        .hmi-login-card select {
+            height: 42px;
+            padding: 0 12px;
+            color: #e5edf8;
+            background: #0f172a;
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            border-radius: 7px;
+            outline: none;
+        }
+        .hmi-login-card button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            color: #fff;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            border: 0;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        .hmi-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            color: #bfdbfe;
+            text-decoration: none;
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+        .hmi-back-link:hover { color: #fff; }
+        .hmi-login-tip {
+            display: block;
+            margin-top: 12px;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+        .hmi-app {
+            min-height: 100vh;
+            display: none;
+            grid-template-columns: 232px minmax(0, 1fr);
+        }
+        .hmi-sidebar {
+            min-height: 100vh;
+            padding: 18px 14px;
+            background: rgba(13, 20, 39, 0.94);
+            border-right: 1px solid rgba(125, 211, 252, 0.14);
+        }
+        .hmi-side-title {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 0 10px 16px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid rgba(125, 211, 252, 0.12);
+        }
+        .hmi-side-title span {
+            color: #94a3b8;
+            font-size: 0.78rem;
+        }
+        .hmi-side-title strong {
+            color: #f8fafc;
+            font-size: 1.08rem;
+        }
+        .hmi-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .hmi-menu button {
+            width: 100%;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 10px;
+            padding: 0 12px;
+            color: rgba(226, 232, 240, 0.72);
+            background: rgba(15, 23, 42, 0.28);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .hmi-menu button i { color: #7dd3fc; }
+        .hmi-menu button.active {
+            color: #fff;
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.38), rgba(37, 99, 235, 0.22));
+            border-color: rgba(125, 211, 252, 0.36);
+            box-shadow: inset 3px 0 0 #38bdf8;
+        }
+        .hmi-main {
+            min-width: 0;
+            padding: 18px;
+        }
+        .hmi-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(125, 211, 252, 0.15);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.68);
+        }
+        .hmi-topbar h1 {
+            margin: 0;
+            color: #e0f2fe;
+            font-size: 1.1rem;
+        }
+        .hmi-topbar p {
+            margin: 4px 0 0;
+            color: #94a3b8;
+            font-size: 0.82rem;
+        }
+        .hmi-status-pill {
+            padding: 7px 10px;
+            border-radius: 999px;
+            color: #bbf7d0;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.22);
+            font-size: 0.8rem;
+        }
+        .hmi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .hmi-kpi, .hmi-panel {
+            border: 1px solid rgba(125, 211, 252, 0.14);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.66);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+        .hmi-kpi {
+            padding: 14px;
+        }
+        .hmi-kpi span {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            margin-bottom: 8px;
+        }
+        .hmi-kpi strong {
+            color: #67e8f9;
+            font-size: 1.28rem;
+        }
+        .hmi-content-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .hmi-panel {
+            padding: 16px;
+            min-height: 420px;
+        }
+        .hmi-panel h2 {
+            margin: 0 0 12px;
+            color: #7dd3fc;
+            font-size: 0.98rem;
+        }
+        .hmi-page-subtitle {
+            margin-top: 18px !important;
+            padding-top: 14px;
+            border-top: 1px solid rgba(125, 211, 252, 0.14);
+        }
+        .machine-visual {
+            height: 260px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background:
+                linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+                rgba(2, 6, 23, 0.42);
+            background-size: 34px 34px;
+        }
+        .gearbox-body {
+            position: absolute;
+            left: 12%;
+            right: 10%;
+            top: 31%;
+            height: 84px;
+            border: 4px solid #7dd3fc;
+            border-radius: 46px 80px 80px 46px;
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.55), rgba(148, 163, 184, 0.58));
+            box-shadow: 0 0 28px rgba(34, 211, 238, 0.22);
+        }
+        .gearbox-bearing, .gearbox-motor, .gearbox-oil {
+            position: absolute;
+            top: 42%;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: 2px solid rgba(224, 242, 254, 0.75);
+        }
+        .gearbox-bearing { left: 24%; background: #22c55e; }
+        .gearbox-motor { left: 46%; border-radius: 50%; background: #ef4444; }
+        .gearbox-oil { left: 66%; background: #22c55e; }
+        .hmi-table {
+            display: grid;
+            gap: 8px;
+        }
+        .hmi-table div {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            padding: 9px 10px;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.56);
+            color: #cbd5e1;
+        }
+        .hmi-table b { color: #e0f2fe; }
+        .hmi-panel-note {
+            display: grid;
+            gap: 9px;
+            margin-top: 12px;
+        }
+        .hmi-panel-note div {
+            padding: 9px 10px;
+            border-left: 3px solid #38bdf8;
+            border-radius: 6px;
+            color: #cbd5e1;
+            background: rgba(15, 23, 42, 0.52);
+            font-size: 0.84rem;
+            line-height: 1.55;
+        }
+        .hmi-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .hmi-feature-card {
+            min-height: 86px;
+            padding: 12px;
+            border: 1px solid rgba(125, 211, 252, 0.14);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.56);
+        }
+        .hmi-feature-card span {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.76rem;
+            margin-bottom: 8px;
+        }
+        .hmi-feature-card strong {
+            display: block;
+            color: #e0f2fe;
+            font-size: 1rem;
+        }
+        .hmi-feature-card small {
+            display: block;
+            margin-top: 8px;
+            color: #7dd3fc;
+            line-height: 1.45;
+        }
+        .hmi-life-bar {
+            height: 12px;
+            overflow: hidden;
+            margin: 12px 0 4px;
+            border-radius: 999px;
+            background: rgba(30, 41, 59, 0.88);
+        }
+        .hmi-life-bar i {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #22c55e, #38bdf8);
+        }
+        .hmi-signal-list,
+        .hmi-threshold-list,
+        .hmi-workflow-list {
+            display: grid;
+            gap: 9px;
+        }
+        .hmi-signal-list div,
+        .hmi-threshold-list div,
+        .hmi-workflow-list div {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 7px;
+            background: rgba(15, 23, 42, 0.58);
+            border: 1px solid rgba(125, 211, 252, 0.12);
+        }
+        .hmi-signal-list span,
+        .hmi-threshold-list span,
+        .hmi-workflow-list span {
+            color: #cbd5e1;
+        }
+        .hmi-signal-list b,
+        .hmi-threshold-list b,
+        .hmi-workflow-list b {
+            color: #e0f2fe;
+        }
+        .hmi-threshold-edit {
+            color: #e0f2fe;
+            background: rgba(14, 165, 233, 0.14);
+            border: 1px solid rgba(125, 211, 252, 0.34);
+            border-radius: 999px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+        .hmi-threshold-edit:hover {
+            color: #fff;
+            border-color: rgba(125, 211, 252, 0.62);
+            background: rgba(14, 165, 233, 0.24);
+        }
+        .hmi-threshold-input {
+            width: 86px;
+            padding: 6px 8px;
+            color: #fff;
+            background: rgba(15, 23, 42, 0.94);
+            border: 1px solid rgba(125, 211, 252, 0.62);
+            border-radius: 7px;
+            text-align: center;
+            outline: none;
+            font-weight: 800;
+        }
+        .hmi-threshold-note {
+            margin-top: 10px;
+            color: #94a3b8;
+            font-size: 0.76rem;
+        }
+        .hmi-threshold-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .hmi-threshold-reset {
+            color: #bfdbfe;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(96, 165, 250, 0.32);
+            border-radius: 7px;
+            padding: 7px 10px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+        .hmi-threshold-reset:hover { color: #fff; background: rgba(59, 130, 246, 0.22); }
+        .hmi-threshold-status { color: #7dd3fc; font-size: 0.76rem; }
+        .hmi-threshold-edit.readonly {
+            cursor: default;
+            color: #cbd5e1;
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+        .hmi-status-ok { color: #86efac !important; }
+        .hmi-status-warn { color: #facc15 !important; }
+        .hmi-status-danger { color: #fb7185 !important; }
+        .hmi-gearbox-frame {
+            width: 100%;
+            height: min(560px, 62vh);
+            border: 1px solid rgba(125, 211, 252, 0.16);
+            border-radius: 8px;
+            background: #050b1a;
+        }
+        .hmi-fault-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .hmi-fault-head h2 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #7dd3fc;
+            font-size: 1.08rem;
+        }
+        .hmi-fault-levels,
+        .hmi-fault-tools,
+        .hmi-fault-summary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .hmi-fault-levels button,
+        .hmi-fault-tools button,
+        .hmi-fault-tools select {
+            height: 34px;
+            padding: 0 10px;
+            color: #dbeafe;
+            background: rgba(15, 23, 42, 0.76);
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            border-radius: 5px;
+        }
+        .hmi-fault-levels button {
+            background: transparent;
+            border-color: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+        .hmi-fault-levels button.active {
+            color: #7dd3fc;
+            border-bottom-color: #3b82f6;
+        }
+        .hmi-fault-tools button {
+            min-width: 90px;
+            background: #2563eb;
+            border-color: #3b82f6;
+            cursor: pointer;
+        }
+        .hmi-fault-summary {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+        .hmi-fault-summary b {
+            color: #e0f2fe;
+        }
+        .hmi-fault-search {
+            width: 100%;
+            height: 38px;
+            margin-bottom: 10px;
+            padding: 0 12px;
+            color: #e5edf8;
+            background: rgba(2, 6, 23, 0.48);
+            border: 1px solid rgba(125, 211, 252, 0.14);
+            border-radius: 6px;
+            outline: none;
+        }
+        .hmi-fault-list {
+            display: grid;
+            gap: 8px;
+            max-height: 430px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .hmi-fault-row {
+            display: grid;
+            grid-template-columns: 16px 76px minmax(0, 1fr) 44px;
+            align-items: center;
+            gap: 10px;
+            min-height: 58px;
+            padding: 9px 10px;
+            border: 1px solid rgba(125, 211, 252, 0.14);
+            border-radius: 7px;
+            background: rgba(15, 23, 42, 0.58);
+        }
+        .fault-lamp {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.58);
+        }
+        .fault-lamp.warning {
+            background: #f59e0b;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.64);
+        }
+        .fault-lamp.critical {
+            background: #ef4444;
+            animation: hmiFaultBlink 1s infinite;
+        }
+        @keyframes hmiFaultBlink {
+            0%, 100% { opacity: 1; box-shadow: 0 0 14px rgba(239, 68, 68, 0.86); }
+            50% { opacity: 0.28; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+        }
+        .hmi-fault-row b {
+            color: #bfdbfe;
+            font-size: 0.82rem;
+        }
+        .hmi-fault-row strong {
+            display: block;
+            overflow: hidden;
+            color: #e5edf8;
+            font-size: 0.9rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hmi-fault-row small {
+            display: block;
+            margin-top: 4px;
+            overflow: hidden;
+            color: #94a3b8;
+            font-size: 0.74rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hmi-fault-row em {
+            color: #93c5fd;
+            font-style: normal;
+            font-size: 0.78rem;
+            text-align: right;
+        }
+        .hmi-fault-row.warning {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(69, 50, 16, 0.24);
+        }
+        .hmi-fault-row.warning em {
+            color: #facc15;
+        }
+        .hmi-fault-row.critical {
+            border-color: rgba(248, 113, 113, 0.42);
+            background: rgba(69, 16, 24, 0.36);
+        }
+        .hmi-fault-row.critical em {
+            color: #fb7185;
+        }
+        @media (max-width: 900px) {
+            .hmi-app { grid-template-columns: 1fr; }
+            .hmi-sidebar {
+                min-height: auto;
+                border-right: 0;
+                border-bottom: 1px solid rgba(125, 211, 252, 0.14);
+            }
+            .hmi-grid, .hmi-content-grid { grid-template-columns: 1fr; }
+            .hmi-menu { gap: 7px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="login-shell" id="login-shell">
+        <form class="hmi-login-card" id="hmi-login-form">
+            <a class="hmi-back-link" id="hmi-back-login" href="/">
+                <i class="fa-solid fa-arrow-left"></i>
+                返回齿轮箱详情
+            </a>
+            <h1>齿轮箱 HMI 权限登录</h1>
+            <p>当前机组：<b id="login-unit">WTG-001</b>。控制类页面需要二次确认运维权限。</p>
+            <label>账号
+                <input id="hmi-user" value="operator01" autocomplete="username" required>
+            </label>
+            <label>密码
+                <input id="hmi-pass" type="password" value="123456" autocomplete="current-password" required>
+            </label>
+            <label>权限级别
+                <select id="hmi-role">
+                    <option value="operator">运维操作员</option>
+                    <option value="engineer">高级工程师</option>
+                    <option value="admin">管理员</option>
+                </select>
+            </label>
+            <button type="submit"><i class="fa-solid fa-right-to-bracket"></i> 登录 HMI</button>
+            <small class="hmi-login-tip">演示账号用于毕业设计流程展示。实际风场应接入堡垒机、账号审计和控制命令白名单。</small>
+        </form>
+    </main>
+
+    <main class="hmi-app" id="hmi-app">
+        <aside class="hmi-sidebar">
+            <div class="hmi-side-title">
+                <span>单机详情</span>
+                <strong>齿轮箱健康</strong>
+            </div>
+            <nav class="hmi-menu" id="hmi-menu">
+                <button class="active" data-panel="overview"><i class="fa-solid fa-house"></i><span>运行总览</span></button>
+                <button data-panel="life"><i class="fa-solid fa-heart-pulse"></i><span>状态寿命</span></button>
+                <button data-panel="model"><i class="fa-solid fa-cube"></i><span>透明模型</span></button>
+                <button data-panel="acq"><i class="fa-solid fa-signal"></i><span>数据采集</span></button>
+                <button data-panel="io"><i class="fa-regular fa-rectangle-list"></i><span>测点信号</span></button>
+                <button data-panel="params"><i class="fa-solid fa-sliders"></i><span>阈值设置</span></button>
+                <button data-panel="faults"><i class="fa-solid fa-list-check"></i><span>故障代码</span></button>
+                <button data-panel="alarm"><i class="fa-regular fa-bell"></i><span>临界警报</span></button>
+            </nav>
+        </aside>
+        <section class="hmi-main">
+            <div class="hmi-topbar">
+                <div>
+                    <a class="hmi-back-link" id="hmi-back-main" href="/">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        返回齿轮箱详情
+                    </a>
+                    <h1 id="hmi-title">WTG-001 齿轮箱 HMI</h1>
+                    <p id="hmi-subtitle">SCADA/CMS 数据同步 · 操作权限已确认</p>
+                </div>
+                <span class="hmi-status-pill" id="hmi-status">在线</span>
+            </div>
+            <div class="hmi-grid">
+                <div class="hmi-kpi"><span>齿轮箱油温</span><strong id="hmi-oil-temp">-- C</strong></div>
+                <div class="hmi-kpi"><span>振动 RMS</span><strong id="hmi-vibration">-- mm/s</strong></div>
+                <div class="hmi-kpi"><span>健康评分</span><strong id="hmi-health">--</strong></div>
+                <div class="hmi-kpi"><span>剩余寿命 RUL</span><strong id="hmi-rul">-- 天</strong></div>
+            </div>
+            <div class="hmi-content-grid">
+                <div class="hmi-panel">
+                    <h2 id="panel-title">运行总览</h2>
+                    <div class="machine-visual">
+                        <span class="gearbox-body"></span>
+                        <span class="gearbox-bearing"></span>
+                        <span class="gearbox-motor"></span>
+                        <span class="gearbox-oil"></span>
+                    </div>
+                </div>
+                <div class="hmi-panel">
+                    <h2>齿轮箱关键数据</h2>
+                    <div class="hmi-table" id="hmi-table"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const unitId = params.get('unit') || 'WTG-001';
+        const returnUrl = `/?detail=${encodeURIComponent(unitId)}`;
+        let detail = null;
+        let faultCatalog = null;
+        let activeFaultLevel = 'all';
+        let activePanel = 'overview';
+        let hmiRole = 'operator';
+        let hmiThresholdStatus = '';
+        let hmiThresholds = {
+            temp_warning_threshold: 75,
+            temp_threshold: 85,
+            vibration_threshold: 4.5,
+            vibration_critical_threshold: 7.1,
+            oil_warning_threshold: 8,
+            oil_quality_threshold: 10,
+            bearing_warning_threshold: 80,
+            bearing_critical_threshold: 90,
+            rul_warning_threshold: 180,
+            rul_critical_threshold: 90
+        };
+        const hmiThresholdMeta = {
+            temp_warning_threshold: { label: '油温关注', unit: 'C', min: 40, max: 120, step: 1 },
+            temp_threshold: { label: '油温临界', unit: 'C', min: 40, max: 120, step: 1 },
+            bearing_warning_threshold: { label: '高速轴承温度关注', unit: 'C', min: 40, max: 140, step: 1 },
+            bearing_critical_threshold: { label: '高速轴承温度临界', unit: 'C', min: 40, max: 140, step: 1 },
+            vibration_threshold: { label: '振动 RMS 关注', unit: 'mm/s', min: 0.5, max: 20, step: 0.1 },
+            vibration_critical_threshold: { label: '振动 RMS 临界', unit: 'mm/s', min: 0.5, max: 20, step: 0.1 },
+            oil_warning_threshold: { label: '油液 NAS 关注', unit: '', min: 1, max: 16, step: 0.1 },
+            oil_quality_threshold: { label: '油液 NAS 临界', unit: '', min: 1, max: 16, step: 0.1 },
+            rul_warning_threshold: { label: 'RUL 关注', unit: '天', min: 1, max: 1000, step: 1 },
+            rul_critical_threshold: { label: 'RUL 临界', unit: '天', min: 1, max: 1000, step: 1 }
+        };
+        const panelText = {
+            overview: '运行总览',
+            life: '状态寿命',
+            model: '透明模型',
+            acq: '数据采集',
+            io: '测点信号',
+            params: '阈值设置',
+            faults: '故障代码',
+            alarm: '临界警报'
+        };
+
+        document.getElementById('login-unit').textContent = unitId;
+        document.getElementById('hmi-back-login').href = returnUrl;
+        document.getElementById('hmi-back-main').href = returnUrl;
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function faultStateText(state) {
+            if (state === 'critical') return '临界';
+            if (state === 'warning') return '关注';
+            if (state === 'normal') return '正常';
+            return '无数据';
+        }
+
+        async function loadHmiThresholds() {
+            try {
+                const res = await fetch(`/api/settings/configs?t=${Date.now()}`);
+                if (!res.ok) return;
+                const configs = await res.json();
+                hmiThresholds = {
+                    ...hmiThresholds,
+                    temp_warning_threshold: Number(configs.temp_warning_threshold || hmiThresholds.temp_warning_threshold),
+                    temp_threshold: Number(configs.temp_threshold || hmiThresholds.temp_threshold),
+                    vibration_threshold: Number(configs.vibration_threshold || hmiThresholds.vibration_threshold),
+                    vibration_critical_threshold: Number(configs.vibration_critical_threshold || hmiThresholds.vibration_critical_threshold),
+                    oil_warning_threshold: Number(configs.oil_warning_threshold || hmiThresholds.oil_warning_threshold),
+                    oil_quality_threshold: Number(configs.oil_quality_threshold || hmiThresholds.oil_quality_threshold)
+                };
+            } catch (error) {}
+        }
+
+        function renderThresholdEditButton(key) {
+            const meta = hmiThresholdMeta[key];
+            const value = hmiThresholds[key];
+            const readonly = hmiRole !== 'admin' && hmiRole !== 'engineer';
+            return `<button type="button" class="hmi-threshold-edit ${readonly ? 'readonly' : ''}" ${readonly ? 'aria-disabled="true"' : `data-hmi-threshold="${key}"`}>${escapeHtml(value)}${meta?.unit ? ` ${escapeHtml(meta.unit)}` : ''}</button>`;
+        }
+
+        function renderThresholdPairButtons(warningKey, criticalKey) {
+            return `${renderThresholdEditButton(warningKey)} / ${renderThresholdEditButton(criticalKey)}`;
+        }
+
+        function hmiThresholdRows() {
+            return [
+                ['油温预警/临界', renderThresholdPairButtons('temp_warning_threshold', 'temp_threshold')],
+                ['高速轴承温度预警/临界', renderThresholdPairButtons('bearing_warning_threshold', 'bearing_critical_threshold')],
+                ['振动 RMS 预警/临界', renderThresholdPairButtons('vibration_threshold', 'vibration_critical_threshold')],
+                ['油液 NAS 预警/临界', renderThresholdPairButtons('oil_warning_threshold', 'oil_quality_threshold')],
+                ['RUL 预警/临界', renderThresholdPairButtons('rul_warning_threshold', 'rul_critical_threshold')]
+            ];
+        }
+
+        function renderHmiTableRows(rows) {
+            return rows.map(([k, v]) => `<div><span>${escapeHtml(k)}</span><b>${v}</b></div>`).join('');
+        }
+
+        async function saveHmiThreshold(key, rawValue) {
+            const meta = hmiThresholdMeta[key];
+            if (!meta) return;
+            const value = Number(rawValue);
+            if (!Number.isFinite(value) || value < meta.min || value > meta.max) {
+                alert(`${meta.label}需在 ${meta.min} - ${meta.max}${meta.unit ? ` ${meta.unit}` : ''} 范围内`);
+                renderDetail('params');
+                return;
+            }
+            const next = { ...hmiThresholds, [key]: value };
+            if (next.temp_warning_threshold >= next.temp_threshold ||
+                next.bearing_warning_threshold >= next.bearing_critical_threshold ||
+                next.vibration_threshold >= next.vibration_critical_threshold ||
+                next.oil_warning_threshold >= next.oil_quality_threshold ||
+                next.rul_critical_threshold >= next.rul_warning_threshold) {
+                alert('阈值关系不正确：温度/振动/油液需预警小于临界，RUL 需临界小于预警。');
+                renderDetail('params');
+                return;
+            }
+            hmiThresholds = next;
+            hmiThresholdStatus = `${meta.label}已更新`;
+            const persistedKeys = ['temp_warning_threshold', 'temp_threshold', 'vibration_threshold', 'vibration_critical_threshold', 'oil_warning_threshold', 'oil_quality_threshold'];
+            if (persistedKeys.includes(key)) {
+                try {
+                    const payload = {};
+                    payload[key] = value;
+                    const res = await fetch('/api/settings/configs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) throw new Error('save failed');
+                } catch (error) {
+                    hmiThresholdStatus = `${meta.label}已应用，系统同步失败`;
+                    alert('当前值已应用到 HMI，保存到系统配置失败，请稍后重试。');
+                }
+            }
+            renderDetail('params');
+        }
+
+        async function resetHmiThresholds() {
+            hmiThresholds = {
+                ...hmiThresholds,
+                temp_warning_threshold: 75,
+                temp_threshold: 85,
+                bearing_warning_threshold: 80,
+                bearing_critical_threshold: 90,
+                vibration_threshold: 4.5,
+                vibration_critical_threshold: 7.1,
+                oil_warning_threshold: 8,
+                oil_quality_threshold: 10,
+                rul_warning_threshold: 180,
+                rul_critical_threshold: 90
+            };
+            hmiThresholdStatus = '已恢复推荐阈值';
+            try {
+                await fetch('/api/settings/configs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        temp_warning_threshold: 75,
+                        temp_threshold: 85,
+                        vibration_threshold: 4.5,
+                        vibration_critical_threshold: 7.1,
+                        oil_warning_threshold: 8,
+                        oil_quality_threshold: 10
+                    })
+                });
+                hmiThresholdStatus = '推荐阈值已同步系统参数';
+            } catch (error) {
+                hmiThresholdStatus = '已恢复本页阈值，系统同步失败';
+            }
+            renderDetail('params');
+        }
+
+        async function loadDetail() {
+            try {
+                const res = await fetch(`/api/windfarm/turbine/${encodeURIComponent(unitId)}?t=${Date.now()}`);
+                detail = res.ok ? await res.json() : null;
+            } catch (error) {
+                detail = null;
+            }
+            await loadFaultCatalog();
+            await loadHmiThresholds();
+            renderDetail('overview');
+        }
+
+        async function loadFaultCatalog() {
+            try {
+                const res = await fetch(`/api/data/fault-codes?unit_id=${encodeURIComponent(unitId)}&t=${Date.now()}`);
+                faultCatalog = res.ok ? await res.json() : null;
+            } catch (error) {
+                faultCatalog = null;
+            }
+        }
+
+        function renderDetail(panel) {
+            activePanel = panel;
+            const unit = detail?.unit || {};
+            const metrics = detail?.metrics || {};
+            const life = detail?.life || {};
+            document.getElementById('hmi-title').textContent = `${unit.id || unitId} 齿轮箱 HMI`;
+            document.getElementById('hmi-subtitle').textContent = `${detail?.scada_time || '--'} · ${panelText[panel] || '运行总览'}`;
+            document.getElementById('hmi-status').textContent = unit.status_label || '在线';
+            document.getElementById('hmi-oil-temp').textContent = `${unit.oil_temp ?? '--'} C`;
+            document.getElementById('hmi-vibration').textContent = `${unit.vibration_rms ?? '--'} mm/s`;
+            document.getElementById('hmi-health').textContent = unit.health_score ?? '--';
+            document.getElementById('hmi-rul').textContent = `${life.rul_days ?? '--'} 天`;
+            updateHmiKpiColors(unit, life);
+            if (panel === 'faults') {
+                renderFaultPanel();
+                return;
+            }
+            if (panel === 'model') {
+                renderModelPanel();
+                return;
+            }
+            renderNormalPanels(panel);
+            const rows = getPanelRows(panel, unit, metrics, life);
+            const movedRows = panel === 'params' ? [] : getParameterGroupRows(panel);
+            const visibleRows = panel === 'alarm'
+                ? rows.concat(movedRows.length ? movedRows : getAlarmPolicyRows())
+                : rows.concat(movedRows);
+            document.getElementById('hmi-table').innerHTML = renderHmiTableRows(visibleRows);
+        }
+
+        function thresholdLevel(value, warning, critical, inverse = false) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return 'ok';
+            if (inverse) {
+                if (num <= critical) return 'danger';
+                if (num <= warning) return 'warn';
+                return 'ok';
+            }
+            if (num >= critical) return 'danger';
+            if (num >= warning) return 'warn';
+            return 'ok';
+        }
+
+        function setHmiKpiColor(id, level) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('hmi-status-ok', 'hmi-status-warn', 'hmi-status-danger');
+            el.classList.add(level === 'danger' ? 'hmi-status-danger' : level === 'warn' ? 'hmi-status-warn' : 'hmi-status-ok');
+        }
+
+        function updateHmiKpiColors(unit, life) {
+            setHmiKpiColor('hmi-oil-temp', thresholdLevel(unit.oil_temp, hmiThresholds.temp_warning_threshold, hmiThresholds.temp_threshold));
+            setHmiKpiColor('hmi-vibration', thresholdLevel(unit.vibration_rms, hmiThresholds.vibration_threshold, hmiThresholds.vibration_critical_threshold));
+            setHmiKpiColor('hmi-rul', thresholdLevel(life.rul_days, hmiThresholds.rul_warning_threshold, hmiThresholds.rul_critical_threshold, true));
+            setHmiKpiColor('hmi-health', Number(unit.health_score || 100) < 70 ? 'danger' : Number(unit.health_score || 100) < 85 ? 'warn' : 'ok');
+        }
+
+        function getAlarmPolicyRows() {
+            return [
+                ['提示处置窗口', '7 d'],
+                ['警告处置窗口', '72 h'],
+                ['严重处置窗口', '24 h'],
+                ['停机处置窗口', '0 h'],
+                ['告警确认超时', '30 min'],
+                ['复测验收周期', '24 h']
+            ];
+        }
+
+        function getPanelRows(panel, unit, metrics, life) {
+            const temperature = detail?.temperature || {};
+            const values = detail?.values || {};
+            const summary = faultCatalog?.summary || {};
+            const latestAlarm = detail?.alarms?.[0];
+            const rows = {
+                overview: [
+                    ['有功功率', `${metrics.active_power ?? unit.power_kw ?? '--'} kW`],
+                    ['实时风速', `${metrics.wind_speed ?? unit.wind_speed ?? '--'} m/s`],
+                    ['齿轮箱油温', `${unit.oil_temp ?? '--'} C`],
+                    ['振动 RMS', `${unit.vibration_rms ?? '--'} mm/s`],
+                    ['运行状态', unit.status_label || '在线']
+                ],
+                life: [
+                    ['健康评分', `${unit.health_score ?? '--'} / 100`],
+                    ['设计寿命', '20 年'],
+                    ['剩余寿命 RUL', `${life.rul_days ?? '--'} 天`],
+                    ['建议复检周期', `${life.recheck_interval_days ?? '--'} 天`],
+                    ['寿命建议', life.recheck_advice || '保持趋势复核']
+                ],
+                model: [
+                    ['透明部件', '齿轮、轴承、润滑油路、箱体'],
+                    ['高速轴承温度', `${temperature.bearing_temp ?? '--'} C`],
+                    ['低速轴承温度', `${temperature.low_speed_bearing_temp ?? '--'} C`],
+                    ['热热点', `${unit.oil_temp ?? '--'} C`],
+                    ['振动热点', `${unit.vibration_rms ?? '--'} mm/s`]
+                ],
+                acq: [
+                    ['SCADA 数据', '油温、功率、风速、转速'],
+                    ['CMS 数据', '振动 RMS、轴承状态'],
+                    ['油液检测', `NAS ${values.oil_quality ?? unit.oil_quality ?? '--'}`],
+                    ['数据质量', `${values.data_quality ?? '--'} %`],
+                    ['同步时间', detail?.scada_time || '--']
+                ],
+                io: [
+                    ['油温测点', `${unit.oil_temp ?? '--'} C`],
+                    ['高速轴承测点', `${temperature.bearing_temp ?? '--'} C`],
+                    ['振动测点', `${unit.vibration_rms ?? '--'} mm/s`],
+                    ['润滑油测点', `NAS ${values.oil_quality ?? unit.oil_quality ?? '--'}`],
+                    ['冷却/润滑联动', '监测正常']
+                ],
+                params: hmiThresholdRows().concat([
+                    ['报警分级', 'L5 / L10 / L20 / L50 / L80 / L90 / L100']
+                ]),
+                alarm: [
+                    ['临界故障', `${summary.critical ?? '--'} 项`],
+                    ['关注故障', `${summary.warning ?? '--'} 项`],
+                    ['最新告警', latestAlarm?.title || latestAlarm?.name || '暂无未处理临界告警'],
+                    ['建议动作', latestAlarm?.advice || '复核 SCADA/CMS 趋势，必要时生成检修记录'],
+                    ['处置优先级', (summary.critical || 0) > 0 ? 'P1/P2' : '常规巡检']
+                ]
+            };
+            return rows[panel] || rows.overview;
+        }
+
+        function renderNormalPanels(panel) {
+            const mainPanel = document.querySelector('.hmi-content-grid .hmi-panel:first-child');
+            const sparePanel = document.querySelector('.hmi-content-grid .hmi-panel:last-child');
+            if (sparePanel && sparePanel !== mainPanel) sparePanel.style.display = 'none';
+            mainPanel.innerHTML = `
+                <h2 id="panel-title">${escapeHtml(panelText[panel] || '运行总览')}</h2>
+                ${getPanelLeftHtml(panel)}
+                <h2 class="hmi-page-subtitle">${escapeHtml(panelText[panel] || '运行总览')}数据</h2>
+                <div class="hmi-table" id="hmi-table"></div>
+            `;
+        }
+
+        function renderModelPanel() {
+            const mainPanel = document.querySelector('.hmi-content-grid .hmi-panel:first-child');
+            const sparePanel = document.querySelector('.hmi-content-grid .hmi-panel:last-child');
+            if (sparePanel && sparePanel !== mainPanel) sparePanel.style.display = 'none';
+            mainPanel.innerHTML = `
+                <h2 id="panel-title">透明模型</h2>
+                <iframe class="hmi-gearbox-frame" src="/gearbox-3d.html?unit=${encodeURIComponent(unitId)}" title="SL1500 齿轮箱 3D 结构分层展示"></iframe>
+                <h2 class="hmi-page-subtitle">模型说明</h2>
+                <div class="hmi-table" id="hmi-table"></div>
+            `;
+            const rows = [
+                ['展示对象', 'SL1500 齿轮箱结构示意'],
+                ['传动链', '主轴、主轴承、制动器、发电机、底座'],
+                ['一级传动', '行星级：内齿圈、太阳轮、行星轮'],
+                ['二级传动', '中间级：平行轴大齿轮'],
+                ['三级传动', '高速级：小齿轮、输出轴、联轴器'],
+                ['交互方式', '拖拽旋转 / 滚轮缩放 / 右键平移'],
+                ['说明', '用于结构认知与分层展示，不等同真实 CAD 模型']
+            ];
+            document.getElementById('hmi-table').innerHTML = renderHmiTableRows(rows);
+        }
+
+        function getPanelLeftHtml(panel) {
+            const unit = detail?.unit || {};
+            const values = detail?.values || {};
+            const temp = detail?.temperature || {};
+            const life = detail?.life || {};
+            const summary = faultCatalog?.summary || {};
+            const health = Number(unit.health_score || 0);
+            const lifePercent = Math.max(8, Math.min(100, health));
+            if (panel === 'overview') {
+                return `
+                    <div class="hmi-feature-grid">
+                        <div class="hmi-feature-card"><span>健康状态</span><strong>${escapeHtml(unit.health_score ?? '--')} 分</strong><small>${escapeHtml(life.recheck_advice || '保持趋势复核')}</small></div>
+                        <div class="hmi-feature-card"><span>热状态</span><strong>${escapeHtml(unit.oil_temp ?? '--')} C</strong><small>齿轮箱油温与轴承温度联动观察</small></div>
+                        <div class="hmi-feature-card"><span>振动状态</span><strong>${escapeHtml(unit.vibration_rms ?? '--')} mm/s</strong><small>用于齿轮啮合与轴承异常识别</small></div>
+                        <div class="hmi-feature-card"><span>故障风险</span><strong>${escapeHtml(summary.critical ?? '--')} 临界 / ${escapeHtml(summary.warning ?? '--')} 关注</strong><small>统计齿轮箱及关联子系统故障</small></div>
+                    </div>
+                `;
+            }
+            if (panel === 'life') {
+                return `
+                    <div class="hmi-feature-card">
+                        <span>齿轮箱寿命评估</span>
+                        <strong>设计寿命 20 年 · RUL ${escapeHtml(life.rul_days ?? '--')} 天</strong>
+                        <div class="hmi-life-bar"><i style="width:${lifePercent}%"></i></div>
+                        <small>健康评分、油温残差、振动 RMS、油液 NAS 共同影响复检周期。</small>
+                    </div>
+                    <div class="hmi-panel-note">
+                        <div>建议复检周期：${escapeHtml(life.recheck_interval_days ?? '--')} 天</div>
+                        <div>${escapeHtml(life.recheck_advice || '当前未见明显超限，保持常规巡检。')}</div>
+                    </div>
+                `;
+            }
+            if (panel === 'acq') {
+                return `
+                    <div class="hmi-feature-grid">
+                        <div class="hmi-feature-card"><span>SCADA</span><strong class="hmi-status-ok">在线</strong><small>油温、功率、风速、转速、报警</small></div>
+                        <div class="hmi-feature-card"><span>CMS</span><strong class="hmi-status-ok">在线</strong><small>振动 RMS、轴承状态、冲击特征</small></div>
+                        <div class="hmi-feature-card"><span>油液检测</span><strong>NAS ${escapeHtml(values.oil_quality ?? unit.oil_quality ?? '--')}</strong><small>污染度、含水、磨粒趋势</small></div>
+                        <div class="hmi-feature-card"><span>数据质量</span><strong>${escapeHtml(values.data_quality ?? '--')} %</strong><small>低质量数据不参与强诊断结论</small></div>
+                    </div>
+                `;
+            }
+            if (panel === 'io') {
+                return `
+                    <div class="hmi-signal-list">
+                        <div><span>GBX_OIL_TEMP · 齿轮箱油温</span><b>${escapeHtml(unit.oil_temp ?? '--')} C</b></div>
+                        <div><span>GBX_HS_BRG_TEMP · 高速轴承温度</span><b>${escapeHtml(temp.bearing_temp ?? '--')} C</b></div>
+                        <div><span>GBX_LS_BRG_TEMP · 低速轴承温度</span><b>${escapeHtml(temp.low_speed_bearing_temp ?? '--')} C</b></div>
+                        <div><span>GBX_VIB_RMS · 振动有效值</span><b>${escapeHtml(unit.vibration_rms ?? '--')} mm/s</b></div>
+                        <div><span>GBX_OIL_NAS · 润滑油污染度</span><b>NAS ${escapeHtml(values.oil_quality ?? unit.oil_quality ?? '--')}</b></div>
+                    </div>
+                `;
+            }
+            if (panel === 'params') {
+                return `
+                    <div class="hmi-threshold-list">
+                        ${hmiThresholdRows().map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${value}</b></div>`).join('')}
+                        <div class="hmi-threshold-toolbar">
+                            <small class="hmi-threshold-note">${hmiRole === 'operator' ? '当前为运维只读权限；工程师或管理员可修改阈值。' : '点击数值可修改；油温、振动、油液会同步保存到系统参数。'}</small>
+                            <button type="button" class="hmi-threshold-reset" id="hmi-threshold-reset">恢复推荐值</button>
+                        </div>
+                        <small class="hmi-threshold-status">${escapeHtml(hmiThresholdStatus)}</small>
+                    </div>
+                `;
+            }
+            if (panel === 'alarm') {
+                return `
+                    <div class="hmi-workflow-list">
+                        <div><span>1. 临界识别</span><b class="${(summary.critical || 0) > 0 ? 'hmi-status-danger' : 'hmi-status-ok'}">${escapeHtml(summary.critical ?? '--')} 项</b></div>
+                        <div><span>2. 趋势复核</span><b>油温 / 振动 / 油液</b></div>
+                        <div><span>3. 处置建议</span><b>${(summary.critical || 0) > 0 ? '生成 P1/P2 工单' : '常规巡检'}</b></div>
+                        <div><span>4. 检修闭环</span><b>确认、复测、归档</b></div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function getParameterGroupRows(panel) {
+            const groups = detail?.parameter_groups || {};
+            const groupIndex = { acq: 0, params: 1, life: 2, model: 3, alarm: 4 };
+            const rows = Object.values(groups)[groupIndex[panel]] || [];
+            return rows.map(([name, value, unit]) => [name, `${value} ${unit}`.trim()]);
+        }
+
+        function renderFaultPanel() {
+            const items = faultCatalog?.items || [];
+            const summary = faultCatalog?.summary || {};
+            const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
+            const mainPanel = document.querySelector('.hmi-content-grid .hmi-panel:first-child');
+            const sparePanel = document.querySelector('.hmi-content-grid .hmi-panel:last-child');
+            if (sparePanel && sparePanel !== mainPanel) sparePanel.style.display = 'none';
+            mainPanel.innerHTML = `
+                <div class="hmi-fault-head">
+                    <h2><i class="fa-solid fa-triangle-exclamation"></i> 齿轮箱故障代码</h2>
+                </div>
+                <div class="hmi-table">
+                    <div><span>临界故障</span><b>${summary.critical ?? '--'} 项</b></div>
+                    <div><span>关注故障</span><b>${summary.warning ?? '--'} 项</b></div>
+                    <div><span>控制命令</span><b>需现场授权</b></div>
+                    <div><span>处置原则</span><b>先复核 SCADA/CMS 趋势，再生成检修记录</b></div>
+                </div>
+                <div class="hmi-fault-levels" id="hmi-fault-levels">
+                    ${['all', '5', '10', '20', '50', '80', '90', '100'].map(level => `
+                        <button type="button" class="${activeFaultLevel === level ? 'active' : ''}" data-level="${level}">${level === 'all' ? '全部' : `L${level}`}</button>
+                    `).join('')}
+                </div>
+                <div class="hmi-fault-tools">
+                    <select id="hmi-fault-category">
+                        <option value="all">全部类别</option>
+                        ${categories.map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('')}
+                    </select>
+                    <select id="hmi-fault-state">
+                        <option value="all">全部状态</option>
+                        <option value="critical">临界</option>
+                        <option value="warning">关注</option>
+                        <option value="normal">正常</option>
+                    </select>
+                    <button type="button" id="hmi-fault-refresh">刷新</button>
+                </div>
+                <div class="hmi-fault-summary">
+                    <span>当前机组 <b>${escapeHtml(faultCatalog?.unit_id || unitId)}</b></span>
+                    <span>类型 <b>${summary.total ?? '--'}</b></span>
+                    <span>临界 <b>${summary.critical ?? '--'}</b></span>
+                    <span>关注 <b>${summary.warning ?? '--'}</b></span>
+                    <span>同步 <b>${escapeHtml(faultCatalog?.timestamp || '--')}</b></span>
+                </div>
+                <input class="hmi-fault-search" id="hmi-fault-search" placeholder="搜索故障码、名称、来源">
+                <div class="hmi-fault-list" id="hmi-fault-list"></div>
+            `;
+            document.getElementById('hmi-fault-levels').addEventListener('click', event => {
+                const button = event.target.closest('button[data-level]');
+                if (!button) return;
+                activeFaultLevel = button.dataset.level || 'all';
+                document.querySelectorAll('#hmi-fault-levels button').forEach(item => item.classList.toggle('active', item === button));
+                applyFaultFilters();
+            });
+            document.getElementById('hmi-fault-category').addEventListener('change', applyFaultFilters);
+            document.getElementById('hmi-fault-state').addEventListener('change', applyFaultFilters);
+            document.getElementById('hmi-fault-search').addEventListener('input', applyFaultFilters);
+            document.getElementById('hmi-fault-refresh').addEventListener('click', async () => {
+                await loadFaultCatalog();
+                renderFaultPanel();
+            });
+            applyFaultFilters();
+        }
+
+        function applyFaultFilters() {
+            const list = document.getElementById('hmi-fault-list');
+            if (!list) return;
+            const term = (document.getElementById('hmi-fault-search')?.value || '').trim().toLowerCase();
+            const category = document.getElementById('hmi-fault-category')?.value || 'all';
+            const state = document.getElementById('hmi-fault-state')?.value || 'all';
+            const items = (faultCatalog?.items || []).filter(item => {
+                const text = `${item.code} ${item.raw_code} ${item.source_code} ${item.severity_level} ${item.name} ${item.category} ${item.source}`.toLowerCase();
+                return (!term || text.includes(term))
+                    && (category === 'all' || item.category === category)
+                    && (activeFaultLevel === 'all' || String(item.severity_level) === activeFaultLevel)
+                    && (state === 'all' || item.state === state);
+            });
+            list.innerHTML = items.length ? items.map(item => `
+                <div class="hmi-fault-row ${escapeHtml(item.state)}">
+                    <span class="fault-lamp ${escapeHtml(item.state)}"></span>
+                    <b>${escapeHtml(item.code)}</b>
+                    <div>
+                        <strong>${escapeHtml(item.name)}</strong>
+                        <small>${escapeHtml(item.category || '--')} · L${escapeHtml(item.severity_level || '--')} · ${escapeHtml(item.source || '--')}</small>
+                    </div>
+                    <em>${escapeHtml(faultStateText(item.state))}</em>
+                </div>
+            `).join('') : '<div class="hmi-fault-row"><span></span><b>--</b><div><strong>暂无匹配故障代码</strong><small>请调整筛选条件</small></div><em>空</em></div>';
+        }
+
+        document.getElementById('hmi-login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            hmiRole = document.getElementById('hmi-role')?.value || 'operator';
+            document.getElementById('login-shell').style.display = 'none';
+            document.getElementById('hmi-app').style.display = 'grid';
+            await loadDetail();
+        });
+
+        document.getElementById('hmi-menu').addEventListener('click', (event) => {
+            const button = event.target.closest('button[data-panel]');
+            if (!button) return;
+            document.querySelectorAll('#hmi-menu button').forEach(item => item.classList.toggle('active', item === button));
+            renderDetail(button.dataset.panel);
+        });
+
+        document.addEventListener('click', (event) => {
+            const resetButton = event.target.closest('#hmi-threshold-reset');
+            if (resetButton) {
+                resetHmiThresholds();
+                return;
+            }
+            const button = event.target.closest('.hmi-threshold-edit');
+            if (!button) return;
+            if (!button.dataset.hmiThreshold) return;
+            const key = button.dataset.hmiThreshold;
+            const meta = hmiThresholdMeta[key];
+            if (!meta) return;
+            const input = document.createElement('input');
+            input.className = 'hmi-threshold-input';
+            input.type = 'number';
+            input.min = meta.min;
+            input.max = meta.max;
+            input.step = meta.step;
+            input.value = hmiThresholds[key];
+            input.dataset.hmiThreshold = key;
+            button.replaceWith(input);
+            input.focus();
+            input.select();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (!event.target.classList?.contains('hmi-threshold-input')) return;
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveHmiThreshold(event.target.dataset.hmiThreshold, event.target.value);
+            }
+            if (event.key === 'Escape') {
+                renderDetail('params');
+            }
+        });
+
+        document.addEventListener('focusout', (event) => {
+            if (!event.target.classList?.contains('hmi-threshold-input')) return;
+            saveHmiThreshold(event.target.dataset.hmiThreshold, event.target.value);
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,1064 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL1500齿轮箱健康管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.154.0/three.min.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            if (!window.echarts || !window.THREE) {
+                var banner = document.createElement('div');
+                banner.style.cssText = 'position:fixed;left:16px;right:16px;top:16px;z-index:3000;padding:12px 16px;border-radius:8px;background:#7f1d1d;color:#fff;font-size:14px;';
+                banner.textContent = '部分前端资源未加载成功，请检查网络或将 ECharts、Three.js、Font Awesome 本地化后再演示。';
+                document.body.appendChild(banner);
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+            <div class="login-box glass-panel fade-in">
+                <h2 style="margin-bottom: 8px; color: var(--accent-color); display: flex; align-items: center; gap: 10px;">
+                <span class="brand-mini-turbine" aria-hidden="true"><span></span><b></b><i><em></em><em></em><em></em></i></span> SL1500 Health
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">SL1500 双馈式风机齿轮箱健康管理系统</p>
+            
+            <div class="login-tabs" style="display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                <button class="tab-btn active" id="tab-login" style="background: none; border: none; color: white; cursor: pointer; font-weight: 600;">登 录</button>
+                <button class="tab-btn" id="tab-register" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-weight: 600;">注 册</button>
+            </div>
+
+            <!-- 登录表单 -->
+            <form id="login-form">
+                <div class="input-group">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" id="username" placeholder="用户名" required>
+                </div>
+                <div class="input-group" style="margin-top: 16px;">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="password" placeholder="密码" required>
+                </div>
+                <button type="submit" class="primary-btn" style="width: 100%; justify-content: center; margin-top: 24px; padding: 12px;">登 录</button>
+            </form>
+
+            <!-- 注册表单 (默认隐藏) -->
+            <form id="register-form" style="display: none;">
+                <div class="input-group">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <input type="text" id="reg-username" placeholder="请设置用户名" required>
+                </div>
+                <div class="input-group" style="margin-top: 16px;">
+                    <i class="fa-solid fa-key"></i>
+                    <input type="password" id="reg-password" placeholder="请设置密码" required>
+                </div>
+                <div class="input-group" style="margin-top: 16px;">
+                    <i class="fa-solid fa-shield"></i>
+                    <select id="reg-role" required>
+                        <option value="" disabled selected>选择系统权限...</option>
+                        <option value="operator">运维人员 (Operator)</option>
+                        <option value="admin">高级工程师 (Admin)</option>
+                    </select>
+                </div>
+                <button type="submit" class="primary-btn" style="width: 100%; justify-content: center; margin-top: 24px; padding: 12px; background: var(--success);">注 册 并 登 录</button>
+            </form>
+        </div>
+
+    </div>
+    
+    <div class="app-container" id="main-app" style="display: none;">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <span class="brand-mini-turbine" aria-hidden="true"><span></span><b></b><i><em></em><em></em><em></em></i></span>
+                <h2>SL1500 Health</h2>
+            </div>
+            <nav class="nav-menu" aria-label="系统模块导航">
+                <div class="nav-module-group">
+                    <div class="nav-section-title"><i class="fa-solid fa-heart-pulse"></i><span>健康监测区</span></div>
+                    <a href="#" class="nav-item active" data-target="windfarm" data-module="健康监测区" data-module-desc="齿轮箱健康总览、单机状态与关键指标联动"><i class="fa-solid fa-table-cells-large"></i> 健康总览</a>
+                    <a href="#" class="nav-item hidden-nav-route" data-target="turbine-detail" data-module="健康监测区" data-module-desc="齿轮箱温度、寿命、部件状态与透明模型"><i class="fa-solid fa-gears"></i> 齿轮箱详情</a>
+                    <a href="#" class="nav-item hidden-nav-route" data-target="dashboard" data-module="健康监测区" data-module-desc="油温、振动、功率与数据采集质量趋势"><i class="fa-solid fa-chart-line"></i> 实时监测</a>
+                </div>
+                <div class="nav-module-group">
+                    <div class="nav-section-title"><i class="fa-solid fa-brain"></i><span>智能诊断区</span></div>
+                    <a href="#" class="nav-item" data-target="diagnosis" data-module="智能诊断区" data-module-desc="齿轮箱异常检测、故障识别与处置建议"><i class="fa-solid fa-stethoscope"></i> 故障诊断</a>
+                    <a href="#" class="nav-item" data-target="ai-qa" data-module="智能诊断区" data-module-desc="知识库与大模型辅助运维问答"><i class="fa-solid fa-robot"></i> 运维辅助问答</a>
+                    <a href="#" class="nav-item hidden-nav-route" data-target="turbine-detail" data-detail-focus="fault-hmi" data-module="智能诊断区" data-module-desc="齿轮箱故障类型、故障码与临界状态灯"><i class="fa-solid fa-list-check"></i> 故障代码库</a>
+                    <a href="#" class="nav-item" data-target="data" data-module="智能诊断区" data-module-desc="历史故障记录、故障码统计与数据归档"><i class="fa-solid fa-database"></i> 故障数据</a>
+                    <a href="#" class="nav-item" data-target="reports" data-module="智能诊断区" data-module-desc="健康评分、RUL 与关键指标报告"><i class="fa-solid fa-file-contract"></i> 健康报告</a>
+                </div>
+                <div class="nav-module-group">
+                    <div class="nav-section-title"><i class="fa-solid fa-sliders"></i><span>系统配置区</span></div>
+                    <a href="#" class="nav-item" data-target="settings" data-module="系统配置区" data-module-desc="齿轮箱告警阈值、账号权限与数据接入参数维护"><i class="fa-solid fa-gear"></i> 参数设置</a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar glass-panel">
+                <div class="module-indicator" id="module-indicator">
+                    <span id="current-module-name">健康监测区</span>
+                    <strong id="current-view-name">健康总览</strong>
+                    <small id="current-module-desc">齿轮箱健康总览、单机状态与关键指标联动</small>
+                </div>
+                <div class="user-profile">
+                    <div class="notification-bell" id="notification-bell">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge" id="notification-badge">0</span>
+                        <!-- Notification Dropdown -->
+                        <div class="notification-dropdown glass-panel" id="notification-dropdown">
+                            <div class="notif-header">
+                                <div>
+                                    <strong>系统运行通知</strong>
+                                    <span id="notif-last-sync">等待同步</span>
+                                </div>
+                                <button type="button" id="notif-mark-read" title="全部标为已读"><i class="fa-solid fa-check-double"></i></button>
+                            </div>
+                            <div class="notif-summary">
+                                <div><b id="notif-unread-count">0</b><span>未读</span></div>
+                                <div><b id="notif-critical-count">0</b><span>严重</span></div>
+                                <div><b id="notif-warning-count">0</b><span>告警</span></div>
+                            </div>
+                            <div class="notif-list" id="notification-list">
+                                <div class="notif-empty">正在同步运行通知...</div>
+                            </div>
+                            <div class="notif-footer" id="notif-footer">仅显示需值守人员关注的运行事件</div>
+                        </div>
+                    </div>
+                    <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                    <span class="username">运维工程师 Admin</span>
+                    <button class="logout-btn" id="logout-btn" title="退出系统">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Diagnosis Section (Hidden by default) -->
+                <section id="diagnosis" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>故障诊断中心</h1>
+                        <p>基于 SCADA、CMS 与油液指标的齿轮箱异常识别与运维建议</p>
+                    </div>
+                    <button class="return-detail-btn" data-return-detail>
+                        <i class="fa-solid fa-arrow-left"></i>
+                        返回齿轮箱详情
+                    </button>
+                    <div class="ops-context-bar glass-panel">
+                        <div><span>当前诊断机组</span><select id="diagnosis-unit-select" class="unit-select compact"></select></div>
+                        <div><span>诊断模型</span><strong>M-IALO-SVR + VMD-CNN</strong></div>
+                        <div><span>数据源</span><strong>实时采集 + 齿轮箱详情</strong></div>
+                    </div>
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
+                        <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+                            <select id="diagnosis-scenario" style="width: 220px;">
+                                <option value="auto">自动工况</option>
+                                <option value="normal">正常运行</option>
+                                <option value="gear_wear">齿轮齿面磨损</option>
+                                <option value="pitting">齿面点蚀/剥落</option>
+                                <option value="broken_tooth">齿轮断齿</option>
+                                <option value="bearing_wear">轴承磨损</option>
+                                <option value="bearing_pitting">轴承点蚀/剥落</option>
+                                <option value="bearing_overheat">高速轴承过温</option>
+                                <option value="gearbox_overheat">齿轮箱油温过高</option>
+                                <option value="oil_contamination">润滑油污染/油液劣化</option>
+                                <option value="shaft_misalignment">轴系不对中</option>
+                                <option value="mesh_abnormal">齿轮啮合异常</option>
+                                <option value="foundation_loose">箱体或基础松动</option>
+                                <option value="cooling_fault">冷却系统故障</option>
+                            </select>
+                            <button id="run-diagnosis-btn" class="primary-btn"><i class="fa-solid fa-microchip"></i> 运行齿轮箱诊断</button>
+                            <span id="diagnosis-status" style="align-self: center; color: var(--text-secondary);">等待运行...</span>
+                        </div>
+                        <div id="diagnosis-results" style="display: none;">
+                            <h3 style="margin-bottom: 16px; color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i> 诊断结果</h3>
+                            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 16px; border-radius: 8px;">
+                                <div class="diagnosis-summary-grid">
+                                    <div>
+                                        <span class="detail-label">疑似故障类型</span>
+                                        <div id="fault-type" class="diagnosis-value" style="color: var(--danger);">--</div>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">风险等级</span>
+                                        <div id="fault-risk-level" class="diagnosis-value">--</div>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">关联部件</span>
+                                        <div id="fault-component" class="diagnosis-value">--</div>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">置信度</span>
+                                        <div id="fault-prob" class="diagnosis-value">--</div>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">健康评分</span>
+                                        <div id="fault-health-score" class="diagnosis-value">--</div>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">剩余寿命</span>
+                                        <div id="fault-rul" class="diagnosis-value">--</div>
+                                    </div>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>特征值:</strong> <span id="fault-features">--</span>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>主要风险因子:</strong>
+                                    <div id="fault-risk-factors" class="risk-factor-list">--</div>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>诊断依据:</strong> <span id="fault-basis">--</span>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>建议措施:</strong> <span id="fault-advice">--</span>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>处置清单:</strong>
+                                    <ul id="fault-actions" class="diagnosis-actions"></ul>
+                                </div>
+                                <div class="diagnosis-block" id="fault-work-order-wrap" style="display:none;">
+                                    <strong>检修工单:</strong> <span id="fault-work-order">--</span>
+                                </div>
+                                <div class="diagnosis-block">
+                                    <strong>诊断说明:</strong> <span id="fault-explanation">--</span>
+                                </div>
+                                <div class="diagnosis-block" style="color: var(--text-secondary);">
+                                    <strong>记录状态:</strong> <span id="fault-persistence">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI QA Section (Hidden by default, shown when selected) -->
+                <section id="ai-qa" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>智能运维诊断助手</h1>
+                        <p>融合实时工况、故障记录与大模型推理的齿轮箱处置建议</p>
+                    </div>
+
+                    <div class="qa-workbench">
+                        <aside class="qa-context-panel glass-panel">
+                            <div class="qa-panel-title">
+                                <h3><i class="fa-solid fa-circle-nodes"></i> 当前机组上下文</h3>
+                                <span id="qa-context-mode">实时同步</span>
+                            </div>
+                            <div class="qa-unit-card">
+                                <span>当前机组</span>
+                                <strong id="qa-unit-id">--</strong>
+                                <small id="qa-unit-status">等待同步</small>
+                                <select id="qa-unit-select" class="qa-unit-select" aria-label="切换问答机组"></select>
+                            </div>
+                            <div class="qa-context-grid">
+                                <div><span>油温</span><strong id="qa-oil-temp">--</strong></div>
+                                <div><span>振动 RMS</span><strong id="qa-vibration">--</strong></div>
+                                <div><span>油液 NAS</span><strong id="qa-oil-nas">--</strong></div>
+                                <div><span>RUL</span><strong id="qa-rul">--</strong></div>
+                                <div><span>健康评分</span><strong id="qa-health">--</strong></div>
+                                <div><span>功率</span><strong id="qa-power">--</strong></div>
+                            </div>
+                            <div class="qa-side-actions">
+                                <button type="button" data-qa-nav="dashboard"><i class="fa-solid fa-chart-line"></i> 实时趋势</button>
+                                <button type="button" data-qa-nav="data"><i class="fa-solid fa-database"></i> 故障记录</button>
+                                <button type="button" data-qa-nav="reports"><i class="fa-solid fa-file-contract"></i> 健康报告</button>
+                            </div>
+                        </aside>
+
+                        <div class="chat-container glass-panel">
+                            <div class="qa-chat-header">
+                                <div>
+                                    <h3><i class="fa-solid fa-robot"></i> 诊断对话</h3>
+                                    <p id="qa-engine-state">默认使用大模型主答，知识库作为证据补充。</p>
+                                </div>
+                                <label class="deep-toggle" title="开启后优先调用配置的大模型 API；关闭后只使用本地专家规则。">
+                                    <input type="checkbox" id="qa-deep-thinking" checked>
+                                    <span><i class="fa-solid fa-brain"></i> 大模型主答</span>
+                                </label>
+                            </div>
+                            <div class="chat-history" id="chat-history">
+                                <div class="message system-msg">
+                                    <div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                                    <div class="msg-bubble">
+                                        <div class="qa-conclusion">结论：我会先读取当前机组状态，再给出处置优先级、判断依据和可执行步骤。</div>
+                                        <div class="qa-line">建议直接问“这台机组现在是否需要停机？”或“振动 RMS 升高如何排查？”。</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="qa-prompt-board">
+                                <button class="suggest-btn" data-qa-preset="status">状态评估</button>
+                                <button class="suggest-btn" data-qa-preset="temperature">油温排查</button>
+                                <button class="suggest-btn" data-qa-preset="vibration">振动诊断</button>
+                                <button class="suggest-btn" data-qa-preset="workorder">处置工单</button>
+                                <button class="suggest-btn" data-qa-preset="algorithm">算法解释</button>
+                            </div>
+                            <div class="chat-input-area">
+                                <input type="text" id="qa-input" placeholder="例如：结合当前机组数据，判断是否需要停机并给出处置步骤。">
+                                <button id="send-qa-btn" class="primary-btn"><i class="fa-solid fa-paper-plane"></i> 发送</button>
+                            </div>
+                        </div>
+
+                        <aside class="qa-insight-panel glass-panel">
+                            <div class="qa-panel-title">
+                                <h3><i class="fa-solid fa-sitemap"></i> 输出要求</h3>
+                                <span>结构化</span>
+                            </div>
+                            <div class="qa-flow-list">
+                                <div><b>1</b><span>先给结论和风险等级</span></div>
+                                <div><b>2</b><span>引用实时油温、振动、油液、RUL</span></div>
+                                <div><b>3</b><span>给出现场排查和系统复核步骤</span></div>
+                                <div><b>4</b><span>判断是否生成工单或健康报告</span></div>
+                            </div>
+                            <div class="qa-intelligence-card">
+                                <span>智能程度提升</span>
+                                <strong>模型主答</strong>
+                                <small>知识库不再决定答案，只作为来源证据和兜底。</small>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+                <!-- Gearbox fault code HMI is merged into turbine detail. -->
+                <!-- Data Management Section -->
+                <section id="data" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>故障数据管理</h1>
+                        <p>历史故障记录归档 · 支持按机组编号、严重程度和处理状态筛选</p>
+                    </div>
+                    <div class="fault-kpi-row">
+                        <div class="fault-kpi glass-panel"><span>记录总数</span><strong id="fault-total-count">--</strong></div>
+                        <div class="fault-kpi glass-panel"><span>严重告警</span><strong id="fault-critical-count">--</strong></div>
+                        <div class="fault-kpi glass-panel"><span>待处理</span><strong id="fault-pending-count">--</strong></div>
+                        <div class="fault-kpi glass-panel"><span>当前机组记录</span><strong id="fault-current-unit-count">--</strong></div>
+                    </div>
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div class="fault-toolbar">
+                            <div class="search-bar" style="width: 250px; margin: 0;">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="fault-search-input" placeholder="搜索机组或故障类型...">
+                            </div>
+                            <select id="fault-unit-filter">
+                                <option value="all">全部机组</option>
+                            </select>
+                            <select id="fault-severity-filter">
+                                <option value="all">全部等级</option>
+                                <option value="严重">严重</option>
+                                <option value="警告">警告</option>
+                                <option value="正常">正常</option>
+                            </select>
+                            <select id="fault-status-filter">
+                                <option value="all">全部状态</option>
+                                <option value="pending">待处理</option>
+                                <option value="processed">已处理</option>
+                            </select>
+                            <button id="fault-current-unit-btn" class="mode-btn"><i class="fa-solid fa-filter"></i> 当前机组</button>
+                            <button id="export-fault-btn" class="primary-btn"><i class="fa-solid fa-download"></i> 导出数据报表</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>机组编号</th>
+                                    <th>发生时间</th>
+                                    <th>故障类型</th>
+                                    <th>严重程度</th>
+                                    <th>处理状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>WTG-001</td>
+                                    <td>2023-10-12 14:30</td>
+                                    <td>高速轴承过温</td>
+                                    <td><span class="badge warning">警告</span></td>
+                                    <td>已处理</td>
+                                    <td><a href="#" style="color:var(--accent-color);">查看详情</a></td>
+                                </tr>
+                                <tr>
+                                    <td>WTG-005</td>
+                                    <td>2023-09-28 09:15</td>
+                                    <td>齿面异常磨损</td>
+                                    <td><span class="badge danger" style="background:var(--danger)">严重</span></td>
+                                    <td>待检修</td>
+                                    <td><a href="#" style="color:var(--accent-color);">查看详情</a></td>
+                                </tr>
+                                <tr>
+                                    <td>WTG-012</td>
+                                    <td>2023-09-15 18:45</td>
+                                    <td>油液杂质超标</td>
+                                    <td><span class="badge warning">警告</span></td>
+                                    <td>已处理</td>
+                                    <td><a href="#" style="color:var(--accent-color);">查看详情</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>系统与参数设置</h1>
+                        <p>告警阈值、用户权限与基础数据接入参数配置</p>
+                    </div>
+                    <div class="settings-summary-grid">
+                        <div class="settings-summary-card">
+                            <span>阈值策略</span>
+                            <strong id="settings-risk-summary">常规保护</strong>
+                            <small>油温、振动、油液三类指标联动</small>
+                        </div>
+                        <div class="settings-summary-card">
+                            <span>当前权限</span>
+                            <strong id="settings-current-role">Admin</strong>
+                            <small>管理员可维护阈值和账户</small>
+                        </div>
+                        <div class="settings-summary-card">
+                            <span>SCADA 接入</span>
+                            <strong id="settings-scada-brief">读取中</strong>
+                            <small id="settings-scada-sync">等待同步</small>
+                        </div>
+                        <div class="settings-summary-card">
+                            <span>保存状态</span>
+                            <strong id="settings-save-state">未修改</strong>
+                            <small>配置将写入本地数据库</small>
+                        </div>
+                    </div>
+
+                    <div class="settings-tabs" id="settings-tabs">
+                        <button class="active" type="button" data-settings-tab="thresholds"><i class="fa-solid fa-sliders"></i> 告警阈值</button>
+                        <button type="button" data-settings-tab="access"><i class="fa-solid fa-plug-circle-bolt"></i> 数据接入</button>
+                        <button type="button" data-settings-tab="roles"><i class="fa-solid fa-users-gear"></i> 账户权限</button>
+                        <button type="button" data-settings-tab="users"><i class="fa-solid fa-user-plus"></i> 账户维护</button>
+                    </div>
+
+                    <div class="settings-tab-content active" data-settings-panel="thresholds">
+                    <div class="settings-layout">
+                        <form id="config-form" class="glass-panel settings-panel settings-config-panel">
+                            <div class="settings-panel-title">
+                                <div>
+                                    <h3><i class="fa-solid fa-sliders"></i> 告警阈值设置</h3>
+                                    <p>用于实时监测、故障诊断和健康报告的统一阈值。</p>
+                                </div>
+                                <span id="settings-risk-profile" class="settings-profile-badge">常规保护</span>
+                            </div>
+                            <div class="settings-threshold-grid">
+                                <label class="threshold-card">
+                                    <span>油温关注阈值</span>
+                                    <div><input type="number" id="config-temp-warning-threshold" value="75" min="40" max="120" step="1" class="form-input"><b>°C</b></div>
+                                    <small>达到关注值时进入趋势跟踪。</small>
+                                </label>
+                                <label class="threshold-card">
+                                    <span>最高油温告警阈值</span>
+                                    <div><input type="number" id="config-temp-threshold" value="85" min="40" max="120" step="1" class="form-input"><b>°C</b></div>
+                                    <small id="temp-threshold-hint">推荐 75-85 °C，超过 85 °C 按严重过温处理。</small>
+                                </label>
+                                <label class="threshold-card">
+                                    <span>振动 RMS 关注阈值</span>
+                                    <div><input type="number" id="config-vibration-threshold" value="4.5" min="0.5" max="20" step="0.1" class="form-input"><b>mm/s</b></div>
+                                    <small id="vibration-threshold-hint">推荐 4.5 mm/s，适合高速轴承与齿轮啮合异常预警。</small>
+                                </label>
+                                <label class="threshold-card">
+                                    <span>振动 RMS 告警阈值</span>
+                                    <div><input type="number" id="config-vibration-critical-threshold" value="7.1" min="0.5" max="20" step="0.1" class="form-input"><b>mm/s</b></div>
+                                    <small>超过告警值时建议进入专项诊断。</small>
+                                </label>
+                                <label class="threshold-card">
+                                    <span>油液 NAS 关注阈值</span>
+                                    <div><input type="number" id="config-oil-warning-threshold" value="8" min="1" max="16" step="0.1" class="form-input"><b>NAS</b></div>
+                                    <small>达到关注值时安排油样复核。</small>
+                                </label>
+                                <label class="threshold-card">
+                                    <span>油液 NAS 告警阈值</span>
+                                    <div><input type="number" id="config-oil-quality-threshold" value="10" min="1" max="16" step="0.1" class="form-input"><b>NAS</b></div>
+                                    <small id="oil-threshold-hint">推荐 NAS 10，超过阈值建议安排油液复检。</small>
+                                </label>
+                            </div>
+                            <div class="settings-action-row">
+                                <button class="primary-btn"><i class="fa-solid fa-floppy-disk"></i> 保存参数</button>
+                                <button type="button" id="reset-config-btn" class="mode-btn"><i class="fa-solid fa-rotate-left"></i> 恢复推荐值</button>
+                                <span id="settings-config-note">修改后将同步影响实时告警和健康报告。</span>
+                            </div>
+                        </form>
+
+                    </div>
+                    </div>
+
+                    <div class="settings-tab-content" data-settings-panel="access">
+                        <div class="settings-layout single">
+                            <div class="glass-panel settings-panel settings-access-panel">
+                                <div class="settings-panel-title">
+                                    <div>
+                                        <h3><i class="fa-solid fa-plug-circle-bolt"></i> 数据接入参数</h3>
+                                        <p>展示 SCADA 网关、PLC 在线率、采样周期和数据质量状态。</p>
+                                    </div>
+                                    <span id="settings-access-state" class="settings-profile-badge">读取中</span>
+                                </div>
+                                <div class="settings-access-grid">
+                                    <div><span>网关</span><strong id="settings-gateway">--</strong></div>
+                                    <div><span>协议</span><strong id="settings-protocols">--</strong></div>
+                                    <div><span>PLC 在线</span><strong id="settings-plc-online">--</strong></div>
+                                    <div><span>链路延迟</span><strong id="settings-latency">--</strong></div>
+                                    <div><span>数据质量</span><strong id="settings-quality">--</strong></div>
+                                    <div><span>采样周期</span><strong id="settings-sample-cycle">--</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-tab-content" data-settings-panel="roles">
+                        <div class="settings-layout single">
+                            <div class="glass-panel settings-panel settings-user-panel">
+                                <div class="settings-panel-title">
+                                    <div>
+                                        <h3><i class="fa-solid fa-users-gear"></i> 账户权限概览</h3>
+                                        <p>运维人员可查看与运行诊断，管理员可调整阈值和维护账户。</p>
+                                    </div>
+                                </div>
+                                <div class="settings-role-grid">
+                                    <div><span>管理员</span><strong id="admin-count">0</strong></div>
+                                    <div><span>运维人员</span><strong id="operator-count">0</strong></div>
+                                    <div><span>审计状态</span><strong>开启</strong></div>
+                                </div>
+                                <button id="goto-user-mgmt" class="primary-btn settings-wide-btn"><i class="fa-solid fa-arrow-right"></i> 前往账户维护</button>
+                            </div>
+                        </div>
+                    </div>
+                     
+                    <!-- User Management Sub-section -->
+                    <div class="settings-tab-content" data-settings-panel="users">
+                    <div class="user-management-panel glass-panel">
+                        <div class="settings-panel-title">
+                            <div>
+                                <h3><i class="fa-solid fa-user-plus"></i> 账户维护</h3>
+                                <p>新增账户、切换权限或移除非默认用户。关键操作会进入审计记录。</p>
+                            </div>
+                        </div>
+                        <div class="settings-user-management-grid">
+                            <form id="add-user-form" class="settings-add-user-form">
+                                <div class="input-group">
+                                    <input type="text" id="new-username" placeholder="新用户名" required>
+                                </div>
+                                <div class="input-group">
+                                    <input type="password" id="new-password" placeholder="密码" required>
+                                </div>
+                                <select id="new-role" required>
+                                    <option value="" disabled selected>选择用户身份...</option>
+                                    <option value="operator">运维人员</option>
+                                    <option value="admin">管理员</option>
+                                </select>
+                                <button type="submit" class="primary-btn"><i class="fa-solid fa-user-plus"></i> 添加用户</button>
+                            </form>
+                            <div class="user-list-placeholder">
+                                <!-- 用户列表将加载到这里 -->
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </section>
+
+                <!-- Reports Section -->
+                <section id="reports" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>健康评估报告</h1>
+                        <p>生成机组齿轮箱关键健康数据快照</p>
+                    </div>
+                    <button class="return-detail-btn" data-return-detail>
+                        <i class="fa-solid fa-arrow-left"></i>
+                        返回齿轮箱详情
+                    </button>
+                    <div class="glass-panel report-shell">
+                        <div class="report-toolbar">
+                            <div>
+                                <h2 id="report-title">SL1500 齿轮箱健康关键数据报告</h2>
+                                <p>机组: <span id="report-unit">WTG-001</span> | 编号: <span id="report-id">--</span> | 时间: <span id="report-time">--</span></p>
+                            </div>
+                            <div class="report-actions">
+                                <select id="report-unit-select"></select>
+                                <select id="report-range-select">
+                                    <option value="7">近 7 天</option>
+                                    <option value="30" selected>近 30 天</option>
+                                    <option value="90">近 90 天</option>
+                                </select>
+                                <button class="mode-btn" id="refresh-report-btn"><i class="fa-solid fa-rotate"></i> 刷新报告</button>
+                                <button class="primary-btn" id="export-pdf-btn">
+                                    <i class="fa-solid fa-file-pdf"></i> 导出为 PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="report-content" id="printable-report">
+                            <div class="report-export-header">
+                                <h3>SL1500 齿轮箱健康关键数据报告</h3>
+                                <div>
+                                    <span>机组 <b id="report-export-unit">WTG-001</b></span>
+                                    <span>编号 <b id="report-export-id">--</b></span>
+                                    <span>时间 <b id="report-export-time">--</b></span>
+                                    <span>范围 <b id="report-export-range">近 30 天</b></span>
+                                </div>
+                            </div>
+                            <div class="report-key-grid">
+                                <div class="report-score-card">
+                                    <span>健康评分</span>
+                                    <strong id="rep-score">--</strong>
+                                    <small id="rep-diag-type">--</small>
+                                </div>
+                                <div class="report-key-card"><span>齿轮箱油温</span><strong id="rep-temp">--</strong></div>
+                                <div class="report-key-card"><span>振动 RMS</span><strong id="rep-vib">--</strong></div>
+                                <div class="report-key-card"><span>油液 NAS</span><strong id="rep-oil">--</strong></div>
+                                <div class="report-key-card"><span>有功功率</span><strong id="rep-pwr">--</strong></div>
+                                <div class="report-key-card"><span>数据质量</span><strong id="rep-quality">--</strong></div>
+                                <div class="report-key-card"><span>剩余寿命 RUL</span><strong id="rep-rul">--</strong></div>
+                                <div class="report-key-card"><span>复检周期</span><strong id="rep-recheck">--</strong></div>
+                            </div>
+
+                            <div class="report-conclusion-card">
+                                <div><span>诊断结论</span><strong id="rep-diag-advice">--</strong></div>
+                                <div><span>复检建议</span><strong id="rep-plan">--</strong></div>
+                                <div><span>趋势判断</span><strong id="rep-trend">--</strong></div>
+                                <div><span>工单动作</span><strong id="rep-workorder-action">--</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="windfarm" class="view-section active">
+                    <div class="section-header windfarm-title-row">
+                        <div>
+                            <h1 id="windfarm-name">齿轮箱健康管理总览</h1>
+                            <p id="windfarm-system">SL1500 齿轮箱多源状态监测 · 健康评估</p>
+                        </div>
+                        <div class="windfarm-mode-switch">
+                            <button class="mode-btn active" id="windfarm-env-mode" data-mode="environment"><i class="fa-solid fa-table-cells-large"></i> 健康矩阵</button>
+                            <button class="mode-btn" id="windfarm-list-mode" data-mode="list"><i class="fa-solid fa-table-cells"></i> 指标列表</button>
+                            <button class="mode-btn" id="windfarm-refresh"><i class="fa-solid fa-rotate"></i> 刷新</button>
+                        </div>
+                    </div>
+
+                    <div class="windfarm-kpi-row">
+                        <div class="windfarm-kpi"><span class="kpi-dot green"></span><strong id="wf-time-availability">--</strong><small>时间可利用率(%)</small></div>
+                        <div class="windfarm-kpi"><span class="kpi-dot teal"></span><strong id="wf-energy-availability">--</strong><small>能量可利用率(%)</small></div>
+                        <div class="windfarm-kpi"><span class="kpi-dot cyan"></span><strong id="wf-average-temp">--</strong><small>平均油温(°C)</small></div>
+                        <div class="windfarm-kpi"><span class="kpi-dot purple"></span><strong id="wf-total-power">--</strong><small>总有功功率(kW)</small></div>
+                        <div class="windfarm-kpi"><span class="kpi-dot blue"></span><strong id="wf-average-health">--</strong><small>平均健康评分</small></div>
+                        <div class="windfarm-kpi"><span class="kpi-dot pink"></span><strong id="wf-alarm-count">--</strong><small>告警/故障机组</small></div>
+                    </div>
+
+                    <div class="windfarm-legend" id="windfarm-legend">
+                        <span>图例</span>
+                    </div>
+
+                    <div class="windfarm-grid" id="windfarm-grid">
+                        <div class="windfarm-loading">正在加载齿轮箱健康矩阵...</div>
+                    </div>
+                </section>
+
+                <section id="turbine-detail" class="view-section" style="display: none;">
+                    <div class="turbine-detail-shell">
+                        <div class="turbine-detail-top">
+                            <div class="detail-breadcrumb">
+                                <span class="breadcrumb-link" id="detail-breadcrumb-windfarm">齿轮箱健康总览</span>
+                                <span>&gt;</span>
+                                <span class="breadcrumb-link active" id="detail-breadcrumb-current">齿轮箱详情</span>
+                            </div>
+                            <div class="detail-switcher">
+                                <button class="mode-btn" id="detail-prev-unit">&lt; 上一台</button>
+                                <select id="detail-unit-select"></select>
+                                <button class="mode-btn" id="detail-next-unit">下一台 &gt;</button>
+                            </div>
+                        </div>
+                        <div class="health-action-buttons detail-top-actions">
+                            <button data-health-action="hmi"><i class="fa-solid fa-desktop"></i> HMI 运维控制台</button>
+                            <button data-health-action="diagnosis"><i class="fa-solid fa-stethoscope"></i> 故障诊断</button>
+                            <button data-health-action="trend"><i class="fa-solid fa-chart-line"></i> 实时趋势</button>
+                            <button data-health-action="report"><i class="fa-solid fa-file-contract"></i> 健康报告</button>
+                        </div>
+                        <div class="detail-workspace">
+                        <div class="detail-metric-strip">
+                            <div><strong id="td-oil-temp">--</strong><span>齿轮箱油温(°C)</span></div>
+                            <div><strong id="td-bearing-temp">--</strong><span>高速轴承温度(°C)</span></div>
+                            <div><strong id="td-vibration">--</strong><span>振动 RMS(mm/s)</span></div>
+                            <div><strong id="td-oil-nas">--</strong><span>润滑油 NAS 等级</span></div>
+                            <div><strong id="td-health-kpi">--</strong><span>齿轮箱健康评分</span></div>
+                            <div><strong id="td-rul-kpi">--</strong><span>剩余寿命 RUL</span></div>
+                            <div><strong id="td-recheck-kpi">--</strong><span>建议复检周期</span></div>
+                            <div><strong id="td-fault-count">--</strong><span>历史故障记录</span></div>
+                        </div>
+                        <div class="detail-main-grid">
+                            <div class="detail-panel detail-health-panel">
+                                <div class="panel-title-row"><h3>状态概览</h3><span id="td-control-mode">--</span></div>
+                                <div class="health-summary-card">
+                                    <div>
+                                        <span>齿轮箱健康评分</span>
+                                        <b id="td-health">--</b>
+                                        <small id="td-health-level">--</small>
+                                    </div>
+                                    <div class="health-score-ring" id="td-health-ring" aria-label="健康评分进度">
+                                        <strong id="td-health-ring-value">--</strong>
+                                    </div>
+                                </div>
+                                <div class="temperature-list" id="td-temperature-list"></div>
+                                <div class="life-box">
+                                    <div><span>剩余使用寿命</span><b id="td-life">--</b></div>
+                                    <div><span>建议复检周期</span><b id="td-recheck">--</b></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="detail-alarm-panel" class="detail-alarm-panel glass-panel" style="display: none;">
+                            <div class="alarm-modal-header">
+                                <h3><i class="fa-solid fa-triangle-exclamation"></i> 当前告警与处置建议</h3>
+                                <span id="detail-alarm-time">--</span>
+                            </div>
+                            <div class="alarm-modal-body">
+                                <div class="alarm-list" id="td-alarm-list"></div>
+                                <div class="alarm-side-stack">
+                                    <div class="detail-threshold-editor" id="td-threshold-editor"></div>
+                                    <div class="maintenance-advice" id="td-maintenance-advice"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dashboard Section (Default) -->
+                <section id="dashboard" class="view-section" style="display: none;">
+                    <div class="section-header">
+                        <h1>系统概览</h1>
+                        <p class="dashboard-unit-line">
+                            <span>机组运行状态实时监测</span>
+                            <select id="dashboard-unit-select" class="unit-select compact"></select>
+                        </p>
+                    </div>
+                    <button class="return-detail-btn" data-return-detail>
+                        <i class="fa-solid fa-arrow-left"></i>
+                        返回齿轮箱详情
+                    </button>
+                    <div class="dashboard-tabs" id="dashboard-tabs">
+                        <button class="active" data-dashboard-tab="overview"><i class="fa-solid fa-sliders"></i> 运行概览</button>
+                        <button data-dashboard-tab="vibration"><i class="fa-solid fa-wave-square"></i> 振动趋势</button>
+                        <button data-dashboard-tab="twin"><i class="fa-solid fa-cube"></i> 孪生与采集</button>
+                        <button data-dashboard-tab="history"><i class="fa-solid fa-chart-column"></i> 故障统计</button>
+                    </div>
+
+                    <div class="dashboard-tab-panel active" data-dashboard-panel="overview">
+                        <div class="dashboard-grid">
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon"><i class="fa-solid fa-temperature-three-quarters"></i></div>
+                                <div class="stat-info">
+                                    <h3>齿轮箱油温</h3>
+                                    <p class="stat-value" id="kpi-oil-temp">-- °C</p>
+                                    <span class="trend positive" id="trend-oil-temp"><i class="fa-solid fa-circle-check"></i> 正常</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon"><i class="fa-solid fa-wave-square"></i></div>
+                                <div class="stat-info">
+                                    <h3>当前振动烈度</h3>
+                                    <p class="stat-value warning" id="kpi-vib-rms">-- mm/s</p>
+                                    <span class="trend" id="trend-vib-rms"><i class="fa-solid fa-circle-check"></i> 正常</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon"><i class="fa-solid fa-bolt"></i></div>
+                                <div class="stat-info">
+                                    <h3>当前有功功率</h3>
+                                    <p class="stat-value" id="kpi-power">-- kW</p>
+                                    <span class="trend positive" id="trend-power">稳定并网</span>
+                                </div>
+                            </div>
+                            <div class="stat-card glass-panel">
+                                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);"><i class="fa-solid fa-hourglass-half"></i></div>
+                                <div class="stat-info">
+                                    <h3>剩余使用寿命 (RUL)</h3>
+                                    <p class="stat-value" id="kpi-rul" style="color: var(--success);">-- 天</p>
+                                    <span class="trend" id="trend-rul">健康退化模型预测</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="dashboard-visual-grid">
+                            <div class="dashboard-chart-card glass-panel">
+                                <div class="chart-card-header">
+                                    <span><i class="fa-solid fa-chart-simple"></i> 关键指标归一化</span>
+                                    <span class="chart-badge">阈值对比</span>
+                                </div>
+                                <div id="dashboard-metric-bar" class="dashboard-mini-chart"></div>
+                            </div>
+                            <div class="dashboard-chart-card glass-panel">
+                                <div class="chart-card-header">
+                                    <span><i class="fa-solid fa-shield-heart"></i> 健康裕度</span>
+                                    <span class="chart-badge success">实时估计</span>
+                                </div>
+                                <div id="dashboard-health-gauge" class="dashboard-mini-chart"></div>
+                            </div>
+                        </div>
+                        <div class="acq-overview glass-panel fade-in">
+                            <div class="acq-status-main">
+                                <div>
+                                    <span class="detail-label">采集链路</span>
+                                    <div class="acq-online"><span class="live-dot"></span><span id="acq-status">在线</span></div>
+                                </div>
+                                <div>
+                                    <span class="detail-label">数据质量</span>
+                                    <div class="acq-value" id="acq-quality">--%</div>
+                                </div>
+                                <div>
+                                    <span class="detail-label">采样率</span>
+                                    <div class="acq-value" id="acq-sampling-rate">-- Hz</div>
+                                </div>
+                                <div>
+                                    <span class="detail-label">链路延迟</span>
+                                    <div class="acq-value" id="acq-latency">-- ms</div>
+                                </div>
+                                <div>
+                                    <span class="detail-label">丢包率</span>
+                                    <div class="acq-value" id="acq-packet-loss">--%</div>
+                                </div>
+                                <div>
+                                    <span class="detail-label">最后更新</span>
+                                    <div class="acq-value" id="acq-last-update">--</div>
+                                </div>
+                            </div>
+                            <div class="alert-strip" id="dashboard-alert-strip">当前未发现实时告警。</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-tab-panel" data-dashboard-panel="vibration">
+                        <div class="chart-container glass-panel fade-in">
+                            <div class="dashboard-panel-head">
+                                <h3><i class="fa-solid fa-chart-line"></i> 实时振动波形监测</h3>
+                                <div class="diagnostic-tools">
+                                    <button id="toggle-envelope-btn" class="btn-secondary">
+                                        <i class="fa-solid fa-wave-square"></i> 切换包络分析
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="vibration-chart" class="dashboard-main-chart"></div>
+                        </div>
+                        <div class="dashboard-chart-card glass-panel">
+                            <div class="chart-card-header">
+                                <span><i class="fa-solid fa-chart-column"></i> 振动特征值</span>
+                                <span class="chart-badge">RMS / 峭度 / 峰值因子</span>
+                            </div>
+                            <div id="vibration-feature-chart" class="dashboard-mini-chart"></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-tab-panel" data-dashboard-panel="twin">
+                        <div class="dashboard-twin-grid">
+                        <div class="glass-panel twin-card">
+                            <div class="twin-header">
+                                <h3><i class="fa-solid fa-cube"></i> 齿轮箱数字孪生热图</h3>
+                                <div class="twin-summary" id="twin-summary">热风险 --</div>
+                            </div>
+                            <div id="three-container" class="dashboard-twin-stage">
+                                <div class="twin-fallback-map" id="twin-fallback-map">
+                                    <div class="twin-case">
+                                        <span class="twin-part twin-part-sun" data-twin-part="sun"><b>行星级</b><em>--°C</em></span>
+                                        <span class="twin-part twin-part-gear1" data-twin-part="gear1"><b>中间级</b><em>--°C</em></span>
+                                        <span class="twin-part twin-part-gear2" data-twin-part="gear2"><b>高速级</b><em>--°C</em></span>
+                                        <span class="twin-part twin-part-hs" data-twin-part="hs"><b>高速轴承</b><em>--°C</em></span>
+                                        <span class="twin-shaft twin-shaft-ls"></span>
+                                        <span class="twin-shaft twin-shaft-hs"></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 维度二：组件级状态悬浮窗 (Component Info Overlay) -->
+                                <div id="comp-info-overlay" class="glass-panel fade-in" style="display: none; position: absolute; top: 10px; right: 10px; width: 160px; padding: 12px; z-index: 10; pointer-events: none; background: rgba(15, 23, 42, 0.9);">
+                                    <h4 id="comp-name" style="color: var(--accent-color); margin-bottom: 8px; font-size: 0.9rem;">组件名称</h4>
+                                    <div style="font-size: 0.75rem; line-height: 1.6;">
+                                        <div>磨损度: <span id="comp-wear" class="status-tag success" style="font-size: 0.65rem; padding: 1px 4px;">1.2%</span></div>
+                                        <div>当前温升: <span id="comp-temp" style="color: var(--success);">+4.5 K</span></div>
+                                        <div>RUL预测: <span id="comp-rul" style="font-weight: bold;">185d</span></div>
+                                    </div>
+                                </div>
+                                <div class="heat-legend">
+                                    <div class="heat-scale"></div>
+                                    <div class="heat-labels"><span>55°C</span><span>75°C</span><span>95°C</span></div>
+                                </div>
+                                <div class="twin-hotspot" id="hotspot-sun"><span></span><strong>行星级</strong></div>
+                                <div class="twin-hotspot" id="hotspot-gear1"><span></span><strong>中间级</strong></div>
+                                <div class="twin-hotspot" id="hotspot-gear2"><span></span><strong>高速级</strong></div>
+                                <div class="twin-hotspot" id="hotspot-hs"><span></span><strong>高速轴承</strong></div>
+                            </div>
+                            <div style="position: absolute; bottom: 35px; right: 35px; text-align: right; pointer-events: none;">
+                                <p style="font-size: 0.8rem; color: var(--text-secondary);">实时热图反馈</p>
+                                <p style="font-size: 0.7rem; color: rgba(255,255,255,0.3);">点击内部齿轮查看详情</p>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel edge-status-card">
+                            <h3><i class="fa-solid fa-microchip"></i> 数据采集与边缘处理</h3>
+                            <div class="sensor-list" id="sensor-list">
+                                <div class="sensor-row"><span>正在连接采集网关...</span><strong>--</strong></div>
+                            </div>
+                            <div class="edge-metrics">
+                                <div>
+                                    <span class="detail-label">预处理算法</span>
+                                    <strong>防脉冲均值滤波</strong>
+                                </div>
+                                <div>
+                                    <span class="detail-label">融合缓存</span>
+                                    <strong id="acq-sample-count">-- 帧</strong>
+                                </div>
+                                <div>
+                                    <span class="detail-label">在线传感器</span>
+                                    <strong id="acq-sensor-count">-- / --</strong>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <!-- 故障历史趋势与分布分析面板 -->
+                    <div class="dashboard-tab-panel" data-dashboard-panel="history">
+                    <div class="analysis-panel glass-panel fade-in">
+                        <!-- 面板头部：标题 + 时间范围筛选 -->
+                        <div class="analysis-header">
+                            <div>
+                                <h3><i class="fa-solid fa-chart-bar"></i> 故障历史趋势与分布分析</h3>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px;">多维度故障数据可视化分析 · 实时数据库驱动</p>
+                            </div>
+                            <div class="time-range-filter" id="time-range-filter">
+                                <button class="range-btn active" data-days="7">近7天</button>
+                                <button class="range-btn" data-days="30">近30天</button>
+                                <button class="range-btn" data-days="90">近3月</button>
+                                <button class="range-btn" data-days="365">近1年</button>
+                            </div>
+                        </div>
+
+                        <!-- 汇总KPI行 -->
+                        <div class="analysis-kpi-row" id="analysis-kpi-row">
+                            <div class="analysis-kpi-card">
+                                <div class="kpi-icon" style="background: rgba(59,130,246,0.15); color: var(--accent-color);"><i class="fa-solid fa-list-check"></i></div>
+                                <div>
+                                    <div class="kpi-label">周期内故障总数</div>
+                                    <div class="kpi-num" id="ana-total">--</div>
+                                </div>
+                            </div>
+                            <div class="analysis-kpi-card">
+                                <div class="kpi-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fa-solid fa-circle-exclamation"></i></div>
+                                <div>
+                                    <div class="kpi-label">严重级别故障</div>
+                                    <div class="kpi-num" style="color: var(--danger);" id="ana-critical">--</div>
+                                </div>
+                            </div>
+                            <div class="analysis-kpi-card">
+                                <div class="kpi-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fa-solid fa-hourglass-end"></i></div>
+                                <div>
+                                    <div class="kpi-label">待处理工单</div>
+                                    <div class="kpi-num" style="color: var(--warning);" id="ana-pending">--</div>
+                                </div>
+                            </div>
+                            <div class="analysis-kpi-card">
+                                <div class="kpi-icon" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fa-solid fa-shield-halved"></i></div>
+                                <div>
+                                    <div class="kpi-label">系统健康率</div>
+                                    <div class="kpi-num" style="color: var(--success);" id="ana-health-rate">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 图表区：双列布局 -->
+                        <div class="analysis-charts-grid">
+                            <!-- 左列：故障频次趋势折线图 (占满宽度) -->
+                            <div class="analysis-chart-card full-width">
+                                <div class="chart-card-header">
+                                    <span><i class="fa-solid fa-timeline"></i> 故障频次日趋势</span>
+                                    <span class="chart-badge" id="trend-days-label">近30天</span>
+                                </div>
+                                <div id="trend-line-chart" style="width: 100%; height: 220px;"></div>
+                            </div>
+
+                            <!-- 故障类型分布 -->
+                            <div class="analysis-chart-card fault-type-card full-width">
+                                <div class="chart-card-header">
+                                    <span><i class="fa-solid fa-chart-pie"></i> 故障类型分布</span>
+                                    <span class="chart-badge" id="fault-type-total">-- 条记录</span>
+                                </div>
+                                <div class="fault-type-layout">
+                                    <div id="fault-type-pie-chart"></div>
+                                    <div class="fault-type-breakdown" id="fault-type-breakdown">
+                                        <div class="empty-breakdown">等待统计数据...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 严重程度分布柱图 -->
+                            <div class="analysis-chart-card full-width">
+                                <div class="chart-card-header">
+                                    <span><i class="fa-solid fa-chart-column"></i> 故障严重程度分布</span>
+                                    <span class="chart-badge success">基于数据库实时统计</span>
+                                </div>
+                                <div id="severity-bar-chart" style="width: 100%; height: 200px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    
+    <!-- Modal for Record Details -->
+    <div id="details-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box glass-panel fade-in">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-circle-info"></i> 故障详细信息</h3>
+                <button class="close-modal" id="close-details-btn">&times;</button>
+            </div>
+            <div class="modal-body" id="details-content">
+                <!-- Content injected via JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="primary-btn" id="modal-print-btn"><i class="fa-solid fa-print"></i> 打印详情</button>
+                <button class="primary-btn" style="background: var(--secondary);" id="modal-close-btn">关 闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="closure-modal" class="modal-overlay" style="display: none;">
+        <form class="modal-box glass-panel closure-modal-box fade-in" id="closure-form">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clipboard-check"></i> 故障处理闭环</h3>
+                <button type="button" class="close-modal" id="close-closure-btn">&times;</button>
+            </div>
+            <div class="modal-body closure-form-grid">
+                <div class="closure-record-summary" id="closure-record-summary">--</div>
+                <label>处理人
+                    <input id="closure-owner" class="form-input" required>
+                </label>
+                <label>处理措施
+                    <select id="closure-action" class="form-input" required>
+                        <option value="现场复核">现场复核</option>
+                        <option value="油样复检">油样复检</option>
+                        <option value="振动复测">振动复测</option>
+                        <option value="检修更换">检修更换</option>
+                    </select>
+                </label>
+                <label>复测结果
+                    <select id="closure-result" class="form-input" required>
+                        <option value="复测正常">复测正常</option>
+                        <option value="趋势下降">趋势下降</option>
+                        <option value="继续跟踪">继续跟踪</option>
+                    </select>
+                </label>
+                <label>备注
+                    <textarea id="closure-note" class="form-input" rows="3" placeholder="填写现场处理说明、复测数据或工单编号"></textarea>
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="primary-btn"><i class="fa-solid fa-check"></i> 提交闭环</button>
+                <button type="button" class="primary-btn" style="background: var(--secondary);" id="cancel-closure-btn">取消</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

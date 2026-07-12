@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SL1500 齿轮箱 3D 结构分层展示</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            color: #fff;
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+            background: #050b1a;
+        }
+        #info {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+            max-width: min(520px, calc(100vw - 32px));
+            padding: 11px 20px;
+            border-left: 4px solid #ff9800;
+            border-radius: 24px;
+            background: rgba(0, 0, 0, 0.62);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.22);
+            pointer-events: none;
+        }
+        #info h1 {
+            margin: 0 0 4px;
+            font-size: 1.05rem;
+        }
+        #info p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 0.74rem;
+        }
+        #controls-panel {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 28px;
+            background: rgba(30, 30, 40, 0.84);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 16px;
+            color: #fff;
+            background: #2c3e66;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+        }
+        button:hover,
+        button.active {
+            color: #172033;
+            background: #ff9800;
+            transform: translateY(-1px);
+        }
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: #ffaa66;
+            background: #1e2a3a;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .annotation {
+            position: absolute;
+            right: 18px;
+            bottom: 86px;
+            z-index: 10;
+            padding: 5px 9px;
+            border-radius: 8px;
+            color: #cbd5e1;
+            background: rgba(0, 0, 0, 0.42);
+            font-size: 10px;
+            pointer-events: none;
+        }
+        .label-chip {
+            padding: 4px 10px;
+            border-radius: 20px;
+            color: var(--label-color);
+            background: rgba(20, 30, 45, 0.72);
+            border-left: 3px solid var(--label-color);
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-shadow: 1px 1px 0 #000;
+            white-space: nowrap;
+            max-width: min(220px, calc(100vw - 24px));
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+        }
+        @media (max-width: 700px) {
+            #info { top: 8px; left: 8px; padding: 8px 14px; }
+            #info h1 { font-size: 0.92rem; }
+            button { padding: 6px 10px; font-size: 11px; }
+            .status { font-size: 11px; }
+            .annotation { display: none; }
+            .label-chip {
+                max-width: 136px;
+                padding: 3px 7px;
+                font-size: 0.64rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>SL1500 齿轮箱 | 3D 结构分层展示</h1>
+        <p>行星级 + 两级平行轴 | 鼠标拖拽旋转 / 右键平移 / 滚轮缩放</p>
+    </div>
+    <div id="controls-panel">
+        <button id="btn-all" class="active">全部结构</button>
+        <button id="btn-planetary">行星级</button>
+        <button id="btn-intermediate">中间级</button>
+        <button id="btn-highspeed">高速级</button>
+        <button id="btn-drivetrain">传动链</button>
+        <div class="status"><span>当前展示:</span><span id="layer-name">完整齿轮箱</span></div>
+    </div>
+    <div class="annotation">分层示意：行星架/行星轮 | 中间轴大齿轮 | 高速轴小齿轮与轴承</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b1a);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 4, 6);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0';
+        labelRenderer.domElement.style.left = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 0.2, 0);
+
+        const gridHelper = new THREE.GridHelper(15, 20, 0x3399ff, 0x445566);
+        gridHelper.position.y = -1.2;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.35;
+        scene.add(gridHelper);
+
+        scene.add(new THREE.AmbientLight(0x404060));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(2, 5, 3);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+        const backLight = new THREE.PointLight(0x4466cc, 0.4);
+        backLight.position.set(-2, 1, -3);
+        scene.add(backLight);
+        const fillLight = new THREE.PointLight(0xffaa66, 0.35);
+        fillLight.position.set(1, 2, 2);
+        scene.add(fillLight);
+
+        const baseRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.6, 0.05, 32, 100),
+            new THREE.MeshStandardMaterial({ color: 0x88aaff, metalness: 0.7, roughness: 0.4, transparent: true, opacity: 0.4 })
+        );
+        baseRing.rotation.x = Math.PI / 2;
+        baseRing.position.y = -0.9;
+        scene.add(baseRing);
+
+        const planetaryGroup = new THREE.Group();
+        const intermediateGroup = new THREE.Group();
+        const highSpeedGroup = new THREE.Group();
+        const drivetrainGroup = new THREE.Group();
+        const casingGroup = new THREE.Group();
+
+        const bedplate = new THREE.Mesh(
+            new THREE.BoxGeometry(5.6, 0.18, 2.35),
+            new THREE.MeshStandardMaterial({ color: 0x6f7b86, metalness: 0.45, roughness: 0.42, transparent: true, opacity: 0.78 })
+        );
+        bedplate.position.set(1.1, -1.0, 0);
+        drivetrainGroup.add(bedplate);
+
+        const hub = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 32, 24),
+            new THREE.MeshStandardMaterial({ color: 0x9aa4ad, metalness: 0.55, roughness: 0.38 })
+        );
+        hub.scale.set(1.05, 0.86, 0.86);
+        hub.position.set(-2.85, -0.16, 0);
+        drivetrainGroup.add(hub);
+
+        const mainShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.18, 2.25, 24),
+            new THREE.MeshStandardMaterial({ color: 0xc4b49a, metalness: 0.72, roughness: 0.26 })
+        );
+        mainShaft.rotation.z = Math.PI / 2;
+        mainShaft.position.set(-1.75, -0.12, 0);
+        drivetrainGroup.add(mainShaft);
+
+        const mainBearing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.46, 0.08, 24, 56),
+            new THREE.MeshStandardMaterial({ color: 0x8f99a3, metalness: 0.8, roughness: 0.24 })
+        );
+        mainBearing.rotation.y = Math.PI / 2;
+        mainBearing.position.set(-0.82, -0.12, 0);
+        drivetrainGroup.add(mainBearing);
+
+        const brakeDisk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.78, 0.78, 0.08, 48),
+            new THREE.MeshStandardMaterial({ color: 0x4d4a43, metalness: 0.72, roughness: 0.34 })
+        );
+        brakeDisk.rotation.z = Math.PI / 2;
+        brakeDisk.position.set(3.05, -0.16, -0.55);
+        drivetrainGroup.add(brakeDisk);
+
+        const generatorBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.62, 0.62, 1.05, 42),
+            new THREE.MeshStandardMaterial({ color: 0x0d4ea3, metalness: 0.54, roughness: 0.3 })
+        );
+        generatorBody.rotation.z = Math.PI / 2;
+        generatorBody.position.set(3.75, -0.16, -0.55);
+        drivetrainGroup.add(generatorBody);
+
+        const generatorCap = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.66, 0.66, 0.12, 42),
+            new THREE.MeshStandardMaterial({ color: 0x083b7a, metalness: 0.5, roughness: 0.35 })
+        );
+        generatorCap.rotation.z = Math.PI / 2;
+        generatorCap.position.set(4.32, -0.16, -0.55);
+        drivetrainGroup.add(generatorCap);
+
+        const ringGearOuter = new THREE.Mesh(
+            new THREE.TorusGeometry(1.45, 0.12, 64, 120),
+            new THREE.MeshStandardMaterial({ color: 0xbc9a6c, metalness: 0.85, roughness: 0.3, emissive: 0x221100 })
+        );
+        ringGearOuter.rotation.x = Math.PI / 2;
+        planetaryGroup.add(ringGearOuter);
+
+        const ringCyl = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.48, 1.48, 0.45, 64),
+            new THREE.MeshStandardMaterial({ color: 0xa77b3f, metalness: 0.7, roughness: 0.5 })
+        );
+        ringCyl.castShadow = true;
+        planetaryGroup.add(ringCyl);
+
+        const planets = [];
+        [0, 120, 240].forEach(angle => {
+            const rad = angle * Math.PI / 180;
+            const px = Math.cos(rad) * 0.95;
+            const pz = Math.sin(rad) * 0.95;
+            const planetWheel = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.38, 0.38, 0.32, 24),
+                new THREE.MeshStandardMaterial({ color: 0xdd9966, metalness: 0.6, roughness: 0.4, emissive: 0x331100 })
+            );
+            planetWheel.position.set(px, 0, pz);
+            planetaryGroup.add(planetWheel);
+            planets.push(planetWheel);
+
+            const planetRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.42, 0.05, 16, 32),
+                new THREE.MeshStandardMaterial({ color: 0xcc8844, metalness: 0.8 })
+            );
+            planetRing.rotation.x = Math.PI / 2;
+            planetRing.position.set(px, 0.05, pz);
+            planetaryGroup.add(planetRing);
+            planets.push(planetRing);
+        });
+
+        const sunGear = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.52, 0.52, 0.48, 32),
+            new THREE.MeshStandardMaterial({ color: 0xccaa77, metalness: 0.9, roughness: 0.2, emissive: 0x442200 })
+        );
+        planetaryGroup.add(sunGear);
+
+        const sunShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.22, 0.9, 12),
+            new THREE.MeshStandardMaterial({ color: 0xaa8866, metalness: 0.7 })
+        );
+        sunShaft.position.y = 0.2;
+        planetaryGroup.add(sunShaft);
+
+        for (let i = 0; i < 3; i++) {
+            const angle = i * 120 * Math.PI / 180;
+            const arm = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.1, 1.2),
+                new THREE.MeshStandardMaterial({ color: 0xbc8f5a, metalness: 0.5 })
+            );
+            arm.position.set(Math.cos(angle) * 0.72, -0.1, Math.sin(angle) * 0.72);
+            arm.rotation.y = angle;
+            planetaryGroup.add(arm);
+        }
+
+        const interGear = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.95, 0.95, 0.55, 48),
+            new THREE.MeshStandardMaterial({ color: 0xba8c5a, metalness: 0.75, roughness: 0.35, emissive: 0x331a00 })
+        );
+        interGear.position.set(1.4, -0.15, 0.6);
+        intermediateGroup.add(interGear);
+
+        const gearTeethRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.0, 0.07, 32, 60),
+            new THREE.MeshStandardMaterial({ color: 0xddaa66, metalness: 0.8 })
+        );
+        gearTeethRing.rotation.x = Math.PI / 2;
+        gearTeethRing.position.copy(interGear.position);
+        intermediateGroup.add(gearTeethRing);
+
+        const interShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.26, 0.26, 1.0, 12),
+            new THREE.MeshStandardMaterial({ color: 0xaa8866, metalness: 0.6 })
+        );
+        interShaft.position.set(1.4, 0.25, 0.6);
+        intermediateGroup.add(interShaft);
+
+        const bearingCap = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.45, 0.45, 0.12, 16),
+            new THREE.MeshStandardMaterial({ color: 0xccaa88, metalness: 0.5 })
+        );
+        bearingCap.position.set(1.4, -0.55, 0.6);
+        intermediateGroup.add(bearingCap);
+
+        const highGear = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.65, 0.65, 0.5, 40),
+            new THREE.MeshStandardMaterial({ color: 0xd9a066, metalness: 0.85, roughness: 0.3, emissive: 0x442200 })
+        );
+        highGear.position.set(2.1, -0.3, -0.9);
+        highSpeedGroup.add(highGear);
+
+        const highShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.28, 0.28, 1.3, 12),
+            new THREE.MeshStandardMaterial({ color: 0xbb9966, metalness: 0.7 })
+        );
+        highShaft.position.set(2.1, 0.25, -0.9);
+        highSpeedGroup.add(highShaft);
+
+        const coupling = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.48, 0.48, 0.28, 12),
+            new THREE.MeshStandardMaterial({ color: 0xccaa77, metalness: 0.6 })
+        );
+        coupling.position.set(2.75, -0.15, -1.05);
+        highSpeedGroup.add(coupling);
+
+        const smallTeethRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.72, 0.06, 24, 48),
+            new THREE.MeshStandardMaterial({ color: 0xedb56a })
+        );
+        smallTeethRing.rotation.x = Math.PI / 2;
+        smallTeethRing.position.copy(highGear.position);
+        highSpeedGroup.add(smallTeethRing);
+
+        const shellMaterial = new THREE.MeshPhongMaterial({ color: 0x7f8c8d, transparent: true, opacity: 0.12, side: THREE.DoubleSide });
+        const mainShell = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.6, 2.8), shellMaterial);
+        mainShell.position.set(0.2, 0, 0.1);
+        casingGroup.add(mainShell);
+        const wire = new THREE.LineSegments(
+            new THREE.EdgesGeometry(mainShell.geometry),
+            new THREE.LineBasicMaterial({ color: 0x88aaff, transparent: true, opacity: 0.25 })
+        );
+        wire.position.copy(mainShell.position);
+        casingGroup.add(wire);
+
+        scene.add(drivetrainGroup, planetaryGroup, intermediateGroup, highSpeedGroup, casingGroup);
+
+        const labels = [];
+        function makeLabel(text, color, position, groupName) {
+            const div = document.createElement('div');
+            div.className = 'label-chip';
+            div.textContent = text;
+            div.style.setProperty('--label-color', color);
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            scene.add(label);
+            labels.push({ label, groupName, text, originalPosition: position.clone() });
+        }
+        makeLabel('行星级：内齿圈 + 行星轮', '#ffaa66', new THREE.Vector3(0, 0.85, 1.2), 'planetary');
+        makeLabel('太阳轮 / 行星架', '#ffaa66', new THREE.Vector3(0, -0.45, 1.1), 'planetary');
+        makeLabel('中间级大齿轮', '#88ccff', new THREE.Vector3(1.8, 0.3, 1.1), 'intermediate');
+        makeLabel('高速级小齿轮', '#88ffaa', new THREE.Vector3(2.8, 0.1, -1.1), 'highspeed');
+        makeLabel('输出轴端', '#88ffaa', new THREE.Vector3(3.2, -0.6, -1.4), 'highspeed');
+        makeLabel('主轴 / Main Shaft', '#c4d7ff', new THREE.Vector3(-2.0, 0.55, 0.55), 'drivetrain');
+        makeLabel('主轴承 / Main Bearing', '#c4d7ff', new THREE.Vector3(-0.95, 0.55, -0.55), 'drivetrain');
+        makeLabel('制动器 / Brake', '#ffcc88', new THREE.Vector3(3.05, 0.55, -1.15), 'drivetrain');
+        makeLabel('发电机 / Generator', '#80b7ff', new THREE.Vector3(3.85, 0.65, 0.15), 'drivetrain');
+        makeLabel('底座 / Bedplate', '#d1d5db', new THREE.Vector3(1.0, -0.68, 1.25), 'drivetrain');
+        makeLabel('SL1500 齿轮箱', '#ffffff', new THREE.Vector3(-1.2, 1.1, 0.8), 'all');
+
+        function applyResponsiveLabels() {
+            const smallScreen = window.innerWidth <= 700;
+            labels.forEach((item) => {
+                item.label.position.copy(item.originalPosition);
+                if (!smallScreen) return;
+                if (item.text.includes('Main Shaft')) {
+                    item.label.position.set(-0.75, 0.48, 0.45);
+                } else if (item.text.includes('SL1500')) {
+                    item.label.position.set(-0.05, 1.0, 0.72);
+                }
+            });
+        }
+        applyResponsiveLabels();
+
+        const particleGeo = new THREE.BufferGeometry();
+        const particleCount = 400;
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 12;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 5;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 12 - 3;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particles = new THREE.Points(
+            particleGeo,
+            new THREE.PointsMaterial({ color: 0x88aaff, size: 0.03, transparent: true, opacity: 0.5 })
+        );
+        scene.add(particles);
+
+        function setLayer(mode) {
+            planetaryGroup.visible = mode === 'all' || mode === 'planetary';
+            intermediateGroup.visible = mode === 'all' || mode === 'intermediate';
+            highSpeedGroup.visible = mode === 'all' || mode === 'highspeed';
+            drivetrainGroup.visible = mode === 'all' || mode === 'drivetrain';
+            casingGroup.visible = true;
+            labels.forEach(({ label, groupName }) => {
+                label.visible = groupName === 'all' || mode === 'all' || groupName === mode;
+            });
+            const names = {
+                all: '完整齿轮箱',
+                planetary: '行星级',
+                intermediate: '中间级',
+                highspeed: '高速级',
+                drivetrain: '传动链'
+            };
+            document.getElementById('layer-name').textContent = names[mode] || names.all;
+        }
+
+        function updateButtonActive(activeId) {
+            ['btn-all', 'btn-planetary', 'btn-intermediate', 'btn-highspeed', 'btn-drivetrain'].forEach(id => {
+                document.getElementById(id).classList.toggle('active', id === activeId);
+            });
+        }
+
+        const layerMap = {
+            'btn-all': 'all',
+            'btn-planetary': 'planetary',
+            'btn-intermediate': 'intermediate',
+            'btn-highspeed': 'highspeed',
+            'btn-drivetrain': 'drivetrain'
+        };
+        Object.entries(layerMap).forEach(([id, mode]) => {
+            document.getElementById(id).addEventListener('click', () => {
+                setLayer(mode);
+                updateButtonActive(id);
+            });
+        });
+        setLayer('all');
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.008;
+            if (planetaryGroup.visible) {
+                sunGear.rotation.y += 0.008;
+                planets.forEach(p => { p.rotation.y += 0.01; });
+                ringGearOuter.rotation.z += 0.002;
+                mainShaft.rotation.x += 0.008;
+            }
+            if (intermediateGroup.visible) {
+                interGear.rotation.y += 0.006;
+                gearTeethRing.rotation.y += 0.006;
+            }
+            if (highSpeedGroup.visible) {
+                highGear.rotation.y += 0.012;
+                smallTeethRing.rotation.y += 0.012;
+                coupling.rotation.y += 0.008;
+            }
+            particles.rotation.y += 0.0005;
+            particles.rotation.x = Math.sin(time * 0.1) * 0.1;
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            applyResponsiveLabels();
+        });
+    </script>
+</body>
+</html>
