@@ -23,9 +23,16 @@ scratch/
 # Large local/raw datasets
 风机数据/
 
+# Non-source project materials and one-off generation tools
+docs/
+tools/
+*.docx
+*.pptx
+*.pdf
+华锐SL1500型双馈式风机齿轮箱智能健康管理体系开题报告.md
+
 # IDE and operating-system files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
